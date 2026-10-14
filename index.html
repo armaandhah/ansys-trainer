@@ -1,0 +1,1445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANSYS Trainer</title>
+<meta name="description" content="Learn ANSYS Workbench and Mechanical for structural FEA from zero: workflow, contacts, meshing, every support and load, results, and how to trust them.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g'><stop offset='0' stop-color='%230000ff'/><stop offset='.5' stop-color='%233cff00'/><stop offset='1' stop-color='%23ff0000'/></linearGradient></defs><path d='M3 26 L16 4 L29 26 Z' fill='url(%23g)' stroke='%23111' stroke-width='1.5'/></svg>">
+</head>
+<body>
+<header class="topbar">
+  <button id="menuBtn" aria-label="Menu">☰</button>
+  <div class="brand"><span class="legend"></span>ANSYS&nbsp;TRAINER</div>
+  <div class="spacer"></div>
+  <span class="progress" id="progress"></span>
+  <button id="themeBtn" title="Toggle light/dark">◐ Theme</button>
+</header>
+
+<div class="layout">
+<nav class="sidebar" id="navList" aria-label="Modules"></nav>
+<main>
+
+<div class="hero">
+  <h1>ANSYS Workbench + Mechanical,<br><span>from zero to trustworthy FEA.</span></h1>
+  <p class="lead">This assumes you have never run a simulation. It walks through the Workbench project page, what Mechanical is actually asking you for, every support and load in the Environment tab (what it really constrains, when to use it, and how it lies to you), and how to tell if your colorful contour plot means anything. Lots of worked examples with hand calcs you can check against.</p>
+  <div class="roadmap">
+    <a href="#mod-start"><b>00 → 04</b><span>What FEA does, the Workbench page, materials, geometry, the Mechanical tree</span></a>
+    <a href="#mod-connections"><b>05 → 07</b><span>Contacts and joints, meshing, analysis settings</span></a>
+    <a href="#mod-supports"><b>08 → 10</b><span>Every support, every load, remote points and scoping</span></a>
+    <a href="#mod-results"><b>11 → 13</b><span>Reading results, singularities and convergence, other analysis types</span></a>
+    <a href="#mod-examples"><b>14 → 17</b><span>Worked examples, mistake cheat sheet, shortcuts, quiz</span></a>
+  </div>
+  <div class="callout"><b class="t">Version note</b>Written against the modern ribbon UI (2020 R1 and later, including 2024/2025 releases and the free Student version). Menu names shift a little between versions, but the concepts and the object names in the tree have been stable for over a decade. If a button isn't where this page says, right-click the tree object (Environment, Mesh, Solution, etc.): the context menu almost always has it under <b>Insert</b>.</div>
+</div>
+
+<!-- ============================================================ 00 -->
+<section class="module" id="mod-start" data-title="What FEA actually does" data-group="Foundations">
+  <div class="module-head"><div class="tag">MODULE 00</div><h2>What FEA actually does</h2><p>Before clicking anything: what the solver is computing, and what it needs from you.</p></div>
+
+  <p>A real part is continuous: every point in it can move a little. That's infinitely many unknowns, which no computer can solve. <b>Finite element analysis</b> chops the part into a finite number of small chunks (<b>elements</b>) joined at points (<b>nodes</b>). The solver only figures out how much each node moves. Everything else (strain, stress) is calculated from those node movements.</p>
+
+  <div class="callout analogy"><b class="t">Analogy</b>Think of the part as a 3D net of springs. Each element is a little block of springs whose stiffness comes from its shape and material (Young's modulus E, Poisson's ratio ν). Push on the net somewhere, pin it somewhere else, and the solver finds how every knot in the net moves so that all the spring forces balance.</div>
+
+  <h3>The one equation</h3>
+  <p>A linear static structural analysis solves one (very big) matrix equation:</p>
+  <div class="math">[K] {u} = {F}
+
+[K]  global stiffness matrix   (from geometry + material + mesh)
+{u}  displacement of every node  (THE UNKNOWNS)
+{F}  forces on every node         (from your loads)</div>
+  <p>Notice what you supply: geometry and material (to build <b>K</b>), loads (to build <b>F</b>), and supports (which set some entries of <b>u</b> to known values, usually zero). That's the whole job. Every setting in Mechanical is one of those three things, or a knob on how accurately they get built.</p>
+
+  <h3>Displacement is the answer, stress is derived</h3>
+  <p>Once the solver has <code>{u}</code>, strain comes from how the displacement changes across each element (a derivative), and stress comes from strain through the material law (σ = Eε in 1D). Two consequences that matter for the rest of this site:</p>
+  <ul>
+    <li><b>Displacements converge faster than stresses.</b> A coarse mesh gives decent deflection but can badly miss peak stress, because stress is a derivative of an approximation.</li>
+    <li><b>Stresses are computed inside elements and then averaged to the nodes</b> for those smooth contour plots. Where elements disagree a lot, the average hides error. (Module 12 covers this.)</li>
+  </ul>
+
+  <h3>Why supports are mandatory</h3>
+  <p>If nothing holds the part, it can slide or spin freely without straining at all. Mathematically <b>K</b> is singular (no unique answer), and the solver errors out with something like <i>"the model is underconstrained"</i> or <i>"rigid body motion"</i>. You need enough supports to stop all 6 rigid body motions in 3D: 3 translations (X, Y, Z) and 3 rotations (about X, Y, Z).</p>
+
+  <figure>
+    <svg viewBox="0 0 760 170" role="img" aria-label="Six rigid body motions">
+      <g font-size="13" class="svg-text">
+        <g transform="translate(20,20)">
+          <rect x="20" y="40" width="70" height="50" class="svg-part"/>
+          <path d="M95 65 h40" stroke="var(--accent)" stroke-width="3" marker-end="url(#ah)"/>
+          <text x="10" y="120" class="svg-text">Translate X, Y, Z</text>
+          <text x="10" y="138" class="svg-muted" font-size="11">(slide away)</text>
+        </g>
+        <g transform="translate(270,20)">
+          <rect x="30" y="40" width="70" height="50" class="svg-part" transform="rotate(-18 65 65)"/>
+          <path d="M120 40 a40 40 0 0 1 0 50" fill="none" stroke="var(--accent)" stroke-width="3" marker-end="url(#ah)"/>
+          <text x="10" y="120" class="svg-text">Rotate X, Y, Z</text>
+          <text x="10" y="138" class="svg-muted" font-size="11">(spin freely)</text>
+        </g>
+        <g transform="translate(520,20)">
+          <rect x="20" y="40" width="70" height="50" class="svg-part"/>
+          <g stroke="var(--text)"><line x1="10" y1="40" x2="10" y2="90"/><line x1="0" y1="45" x2="10" y2="40"/><line x1="0" y1="57" x2="10" y2="52"/><line x1="0" y1="69" x2="10" y2="64"/><line x1="0" y1="81" x2="10" y2="76"/></g>
+          <line x1="20" y1="40" x2="10" y2="40" stroke="var(--text)"/>
+          <text x="0" y="120" class="svg-text">Constrained: 0 of 6 free</text>
+          <text x="0" y="138" class="svg-muted" font-size="11">(solver happy)</text>
+        </g>
+      </g>
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
+    </svg>
+    <figcaption>A 3D body has 6 rigid body modes. Your supports must kill all of them, or the solve fails.</figcaption>
+  </figure>
+
+  <h3>Linear vs nonlinear, in one paragraph</h3>
+  <p>The equation above is <b>linear</b>: double the load, double every displacement and stress. It solves in one shot. It stays linear only if three things are true: (1) the material stays elastic (no yielding), (2) deflections are small enough that the geometry basically doesn't change, (3) contacts don't open, close, or slide. Break any of these and the solve becomes <b>nonlinear</b>: Mechanical applies the load in steps and iterates (Newton-Raphson) until each step balances. Slower, can fail to converge, but sometimes necessary. You'll see these flagged throughout with a <span class="pill nl">nonlinear</span> tag.</p>
+
+  <h3>The workflow you'll repeat forever</h3>
+  <ol class="steps">
+    <li><b>Define the question.</b> What failure are you checking? Yield? Deflection? Stiffness? Fatigue at a weld? This decides everything below.</li>
+    <li><b>Material</b> (Engineering Data).</li>
+    <li><b>Geometry</b>, simplified to what matters for the question.</li>
+    <li><b>Connections</b> between bodies (contacts, joints).</li>
+    <li><b>Mesh</b>, fine where the answer lives.</li>
+    <li><b>Supports and loads</b> that represent reality honestly.</li>
+    <li><b>Solve.</b></li>
+    <li><b>Check</b>: reactions = applied loads, deformation looks physical, mesh converged, hand calc agrees within reason.</li>
+    <li><b>Then</b> believe the stress number.</li>
+  </ol>
+  <div class="callout warn"><b class="t">Garbage in, rainbow out</b>Mechanical will happily produce a beautiful red-to-blue contour plot from a wrong model. The color plot is never evidence on its own. Step 8 is not optional.</div>
+</section>
+
+<!-- ============================================================ 01 -->
+<section class="module" id="mod-workflow" data-title="The Workbench project page" data-group="Foundations">
+  <div class="module-head"><div class="tag">MODULE 01</div><h2>The Workbench project page</h2><p>Workbench is the "launcher and file manager". Mechanical is where the actual FEA setup happens.</p></div>
+
+  <p>When you open <b>ANSYS Workbench</b> you get two areas: the <b>Toolbox</b> on the left (a list of analysis types) and the <b>Project Schematic</b> on the right (empty grid). You drag an analysis system from the Toolbox onto the schematic, and it appears as a block of numbered <b>cells</b>. Each cell is one stage of the workflow and opens its own app when you double-click it.</p>
+
+  <div class="schematic">
+    <div class="sys">
+      <div class="h">A&nbsp;&nbsp;Static Structural</div>
+      <div class="r"><span class="n">1</span>🗂 Static Structural</div>
+      <div class="r"><span class="n">2</span>📘 Engineering Data<span class="s ok" style="color:var(--good)">✓</span></div>
+      <div class="r"><span class="n">3</span>🧊 Geometry<span class="s" style="color:var(--good)">✓</span></div>
+      <div class="r"><span class="n">4</span>⚙ Model<span class="s" style="color:var(--good)">✓</span></div>
+      <div class="r"><span class="n">5</span>📍 Setup<span class="s" style="color:var(--warn)">⟳</span></div>
+      <div class="r"><span class="n">6</span>🧮 Solution<span class="s" style="color:var(--warn)">?</span></div>
+      <div class="r"><span class="n">7</span>📊 Results<span class="s" style="color:var(--warn)">?</span></div>
+      <div class="foot">Static Structural</div>
+    </div>
+    <div style="flex:1; min-width: 260px;">
+      <div class="table-wrap"><table>
+        <tr><th>Cell</th><th>Opens</th><th>What you do there</th></tr>
+        <tr><td>Engineering Data</td><td>Engineering Data editor</td><td>Pick/define materials</td></tr>
+        <tr><td>Geometry</td><td>SpaceClaim / Discovery / DesignModeler</td><td>Import or build CAD, clean it up</td></tr>
+        <tr><td>Model, Setup, Solution, Results</td><td><b>Mechanical</b> (all four open the same window)</td><td>Contacts, mesh, supports, loads, solve, post-process</td></tr>
+      </table></div>
+      <p style="font-size:14px;color:var(--muted)">Model/Setup/Solution/Results are four views of one Mechanical session. Double-click any of them and you land in Mechanical.</p>
+    </div>
+  </div>
+
+  <h3>Cell status icons</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Icon</th><th>Meaning</th><th>What to do</th></tr>
+    <tr><td style="color:var(--good)">✓ green check</td><td>Up to date</td><td>Nothing</td></tr>
+    <tr><td style="color:var(--warn)">⟳ refresh arrows</td><td>Upstream data changed (e.g. you edited geometry)</td><td>Right-click → Refresh, or just open Mechanical (it will ask)</td></tr>
+    <tr><td style="color:var(--warn)">⚡ lightning bolt</td><td>Needs update (inputs fine, just not solved)</td><td>Update / Solve</td></tr>
+    <tr><td style="color:var(--warn)">? question mark</td><td>Missing input</td><td>Fill in the upstream cell (usually no geometry yet)</td></tr>
+    <tr><td style="color:var(--bad)">✗ red x / ⚠</td><td>Failed / error</td><td>Open it and read the Messages window</td></tr>
+  </table></div>
+
+  <h3>Linking systems (sharing data)</h3>
+  <p>The real power of the schematic is dragging one system onto a cell of another to share data. A link line appears and the shared cells go gray in the second system. Common ones:</p>
+  <ul>
+    <li><b>Static Structural → Eigenvalue Buckling.</b> Drop Buckling onto the Static system's <i>Solution</i> cell. Buckling needs the prestressed state from the static run.</li>
+    <li><b>Modal → Harmonic / Random Vibration / Response Spectrum.</b> Mode-superposition analyses reuse the modes.</li>
+    <li><b>Steady-State Thermal → Static Structural.</b> Drop Static onto the Thermal <i>Solution</i> cell to bring temperatures in as a load (thermal stress).</li>
+    <li><b>Sharing geometry/model only.</b> Drop a second system onto the first one's <i>Model</i> cell to run a modal and a static on the identical mesh without remeshing.</li>
+  </ul>
+
+  <h3>Parameters and Design Points</h3>
+  <p>Any number with a little empty box next to it in Mechanical's Details pane (a dimension from CAD, a force magnitude, a result maximum) can be made a <b>parameter</b> by clicking the box (it turns into a blue <b>P</b>). A <b>Parameter Set</b> bar appears on the schematic. Open it and you get a table of <b>Design Points</b>: change a thickness from 3 to 4 to 5 mm in rows, hit <i>Update All Design Points</i>, and Workbench re-runs everything and fills in the max stress for each. This is how you do quick trade studies without clicking through the model ten times.</p>
+
+  <h3>Files: the part that bites everyone once</h3>
+  <p>A project is a <code>.wbpj</code> file <b>plus</b> a folder named <code>projectname_files</code>. The <code>.wbpj</code> is tiny. The folder holds everything. Copy one without the other and the project is dead. To send a project to someone, use <span class="path">File › Archive</span>, which makes a single <code>.wbpz</code>. Open that with <span class="path">File › Restore Archive</span>.</p>
+  <div class="callout warn"><b class="t">Lab computer warning</b>Results files get big fast (hundreds of MB to GB). Before archiving, right-click the Solution cell → <i>Clear Generated Data</i> if you don't need results, or uncheck "results" in the archive options.</div>
+
+  <h3>Units</h3>
+  <p>Workbench has its own unit menu (<span class="path">Units</span> on the project page) and Mechanical has another (<span class="path">Home › Units</span> in Mechanical). They're independent. Mechanical converts everything internally, so you can enter a force in lbf and read stress in MPa. The usual student pick is <b>Metric (mm, kg, N, s, mV, mA)</b>, which gives stress in MPa directly. Just look at the unit next to every value you type.</p>
+</section>
+
+<!-- ============================================================ 02 -->
+<section class="module" id="mod-engdata" data-title="Engineering Data & materials" data-group="Foundations">
+  <div class="module-head"><div class="tag">MODULE 02</div><h2>Engineering Data &amp; materials</h2><p>The material is half of [K]. Get it wrong and every number is wrong by the same ratio.</p></div>
+
+  <p>Double-click <b>Engineering Data</b>. You'll see <b>Structural Steel</b> already there; it's the default for every body. For a linear static analysis the solver only needs:</p>
+  <div class="table-wrap"><table>
+    <tr><th>Property</th><th>Needed for</th><th>Notes</th></tr>
+    <tr><td><b>Young's Modulus (E)</b> + <b>Poisson's Ratio (ν)</b></td><td>Every structural analysis</td><td>Lives under <i>Isotropic Elasticity</i></td></tr>
+    <tr><td><b>Density</b></td><td>Gravity, acceleration, rotation, modal</td><td>Without it, inertial loads do nothing and modal won't run</td></tr>
+    <tr><td><b>Coefficient of Thermal Expansion</b></td><td>Thermal stress</td><td>Plus the reference temperature</td></tr>
+    <tr><td><b>Thermal Conductivity</b></td><td>Thermal analysis</td><td></td></tr>
+    <tr><td><b>Tensile Yield / Ultimate</b></td><td>Only the Stress Tool (safety factor)</td><td>The solver does <b>not</b> use yield in a linear analysis. It will report 900 MPa in aluminum without complaint.</td></tr>
+  </table></div>
+
+  <h3>Adding a material from the library</h3>
+  <ol class="steps">
+    <li>In Engineering Data, click <b>Engineering Data Sources</b> (the book icon at the top). The top pane now shows libraries: General Materials, Aerospace, etc.</li>
+    <li>Click <b>General Materials</b> (or whichever). Find e.g. <i>Aluminum Alloy</i>.</li>
+    <li>Click the yellow <b>+</b> next to it. A book icon appears, meaning it's been added to <b>this project</b>.</li>
+    <li>Click Engineering Data Sources again to go back, then <b>Return to Project</b>.</li>
+    <li>In Mechanical, select the body under <b>Geometry</b> in the tree, and in Details set <b>Assignment</b> to the material.</li>
+  </ol>
+
+  <h3>Making your own (e.g. 6061-T6, 4130)</h3>
+  <p>The library "Aluminum Alloy" is generic (E = 71 GPa). For real work, make your own: in the Outline pane, click the empty "Click here to add a new material" row, name it, then drag <b>Isotropic Elasticity</b> and <b>Density</b> from the Toolbox on the left onto it and type values. Use a datasheet (MatWeb, MMPDS).</p>
+  <div class="table-wrap"><table>
+    <tr><th>Material</th><th>E (GPa)</th><th>ν</th><th>ρ (kg/m³)</th><th>Yield (MPa)</th><th>UTS (MPa)</th></tr>
+    <tr><td>Structural Steel (Ansys default)</td><td>200</td><td>0.30</td><td>7850</td><td>250</td><td>460</td></tr>
+    <tr><td>AISI 4130 normalized</td><td>205</td><td>0.29</td><td>7850</td><td>~435</td><td>~670</td></tr>
+    <tr><td>Al 6061-T6</td><td>68.9</td><td>0.33</td><td>2700</td><td>276</td><td>310</td></tr>
+    <tr><td>Al 7075-T6</td><td>71.7</td><td>0.33</td><td>2810</td><td>503</td><td>572</td></tr>
+    <tr><td>Ti-6Al-4V</td><td>113.8</td><td>0.34</td><td>4430</td><td>880</td><td>950</td></tr>
+  </table></div>
+  <p style="font-size:13px;color:var(--muted)">Typical datasheet values for reference; always use your supplier's numbers for anything that matters. Welded 4130 and welded 6061 (which drops toward T4/O temper in the heat-affected zone) are much weaker than the parent material.</p>
+
+  <div class="callout bad"><b class="t">Classic mistake</b>Forgetting to assign the material. Every body stays Structural Steel. Your aluminum part comes out ~3× too stiff (deflection 1/3 of reality) with roughly the same stress pattern, so nothing looks obviously wrong. Click every body in the Geometry branch and check Assignment before solving.</div>
+
+  <h3>Nonlinear materials (later)</h3>
+  <p>If you need to know what happens <i>after</i> yield (permanent set, crush), add a plasticity model like <b>Bilinear Isotropic Hardening</b> (yield strength + tangent modulus). That makes the analysis <span class="pill nl">nonlinear</span>. For "is my part below yield with margin" questions, stay linear and compare to yield yourself.</p>
+</section>
+
+<!-- ============================================================ 03 -->
+<section class="module" id="mod-geometry" data-title="Geometry prep" data-group="Foundations">
+  <div class="module-head"><div class="tag">MODULE 03</div><h2>Geometry prep</h2><p>The CAD model you'd send to a machinist is usually the wrong model to mesh.</p></div>
+
+  <h3>Getting CAD in</h3>
+  <p>Right-click the <b>Geometry</b> cell → <span class="path">Import Geometry › Browse</span>. Use <b>STEP (.step/.stp)</b> or <b>Parasolid (.x_t)</b> from SolidWorks; both are clean. If SolidWorks is installed on the same machine you can also read <code>.sldprt/.sldasm</code> directly. Double-click Geometry to open it in <b>SpaceClaim</b> (or <b>Discovery</b> in newer versions; older courses use <b>DesignModeler</b>). Everything in this module can be done in any of them.</p>
+
+  <h3>What to simplify (defeaturing)</h3>
+  <p>Ask: <i>does this feature change stiffness or stress where I care?</i> If not, delete it. Small features force tiny elements, which balloon solve time and create fake stress hot spots.</p>
+  <div class="two">
+    <div class="callout good"><b class="t">Usually remove</b>Cosmetic fillets far from the region of interest, logos and engraved text, tiny chamfers, threads (model bolts as smooth cylinders), small holes in low-stress areas, sliver faces from bad CAD exports.</div>
+    <div class="callout bad"><b class="t">Usually keep</b>Fillets in the high-stress region (they control the peak stress!), holes near the load path, weld fillets if you're checking the weld toe, anything that changes stiffness meaningfully.</div>
+  </div>
+  <p>In SpaceClaim: the <b>Repair</b> tab finds split edges, small faces, and gaps. <b>Pull</b> with the Fill option deletes fillets/rounds (select the fillet face, press <kbd>Delete</kbd> also works on most features).</p>
+
+  <h3>Solids, shells, and beams</h3>
+  <p>A thin part (sheet metal, tube wall) meshed with solid elements needs several elements through the thickness to capture bending, which is expensive. Instead you can reduce dimensionality:</p>
+  <div class="table-wrap"><table>
+    <tr><th>Body type</th><th>When</th><th>How in SpaceClaim</th><th>Mechanical needs</th></tr>
+    <tr><td><b>Solid</b></td><td>Chunky parts: uprights, brackets, hubs</td><td>Default</td><td>Nothing extra</td></tr>
+    <tr><td><b>Surface (shell)</b></td><td>Thickness &lt; ~1/10 of other dimensions: sheet metal, thin-wall tubes, gussets</td><td><span class="path">Prepare › Midsurface</span></td><td>Thickness assigned to the surface body</td></tr>
+    <tr><td><b>Line (beam)</b></td><td>Long slender members: frame tubes, truss bars, tie rods</td><td><span class="path">Prepare › Extract</span> or draw lines; assign a cross-section</td><td>Cross Section (e.g. circular tube OD/ID)</td></tr>
+  </table></div>
+  <div class="callout analogy"><b class="t">Baja frame example</b>A whole roll cage as solids is millions of elements. As line bodies with 1.25" × 0.065" tube sections it's a few thousand beam elements and solves in seconds. You get member forces and bending stresses, but not stress at the weld cluster itself. For that, model just the node of interest in solids or shells (submodeling).</div>
+
+  <h3>Multibody parts and Shared Topology</h3>
+  <p>If two bodies are touching, Mechanical by default creates a <b>bonded contact</b> between them (Module 05). An alternative is <b>Shared Topology</b>: put the bodies in one component and set <span class="path">Workbench › Share</span> in SpaceClaim (or in DesignModeler: form a multibody part). Then the mesh nodes on the shared face are literally the same nodes, so there is no contact at all. It's cleaner and faster for welded assemblies, especially shell/beam models where bonded contact between edges is fiddly.</p>
+
+  <h3>Symmetry: cut the model in half (or eighth)</h3>
+  <p>If geometry, material, <b>and loads</b> are all symmetric about a plane, you can model half and apply a symmetry boundary on the cut. Half the elements, same answer. Split in SpaceClaim with <span class="path">Design › Split Body</span> using a plane, delete one half, then in Mechanical apply a <b>Frictionless Support</b> or a <b>Symmetry Region</b> on the cut face (Module 08). Loads applied to the half model must be halved too if they straddle the plane.</p>
+  <div class="callout warn"><b class="t">Don't use symmetry for modal or buckling</b>unless you understand it. A half model only finds modes that are symmetric about the plane; it misses all the antisymmetric ones.</div>
+
+  <h3>Named Selections from CAD</h3>
+  <p>In SpaceClaim, select faces and create a <b>Group</b> (Groups panel, "Create NS"). Groups come into Mechanical as <b>Named Selections</b>. If you name the load faces and support faces in CAD, they survive geometry changes much better than faces picked by hand in Mechanical, which can lose their scoping when the geometry updates.</p>
+</section>
+
+<!-- ============================================================ 04 -->
+<section class="module" id="mod-mechanical" data-title="Inside Mechanical: the tree" data-group="Foundations">
+  <div class="module-head"><div class="tag">MODULE 04</div><h2>Inside Mechanical: the Outline tree</h2><p>Mechanical is driven by one tree. Work top to bottom and every branch turns into a green check.</p></div>
+
+  <p>The screen has four parts: the <b>ribbon</b> on top, the <b>Outline</b> tree on the left, the <b>Details</b> pane under the Outline (properties of whatever is selected), and the <b>graphics window</b>. Below the graphics there's the <b>Messages</b> window; read it when something goes yellow or red.</p>
+
+  <div class="tree">
+<div class="i">Project</div>
+<div class="i">└─ Model (A4)</div>
+<div class="i">   ├─ <span class="ok">✓</span> Geometry                  <span style="color:var(--muted)">← bodies, material assignment, stiffness behavior</span></div>
+<div class="i">   ├─ <span class="ok">✓</span> Materials</div>
+<div class="i">   ├─ <span class="ok">✓</span> Coordinate Systems        <span style="color:var(--muted)">← global + any you add</span></div>
+<div class="i">   ├─ <span class="ok">✓</span> Connections               <span style="color:var(--muted)">← contacts, joints, springs</span></div>
+<div class="i">   ├─ <span class="ok">✓</span> Mesh</div>
+<div class="i">   ├─ <span class="ok">✓</span> Named Selections</div>
+<div class="i hl">   └─ <span class="q">⚡</span> Static Structural (A5)    <span style="color:var(--muted)">← THE ENVIRONMENT: supports + loads live here</span></div>
+<div class="i">      ├─ <span class="ok">✓</span> Analysis Settings</div>
+<div class="i">      ├─ <span class="ok">✓</span> Fixed Support</div>
+<div class="i">      ├─ <span class="ok">✓</span> Force</div>
+<div class="i">      └─ <span class="q">⚡</span> Solution (A6)</div>
+<div class="i">         ├─ Solution Information  <span style="color:var(--muted)">← solver log, convergence plots</span></div>
+<div class="i">         ├─ Total Deformation</div>
+<div class="i">         └─ Equivalent Stress</div>
+  </div>
+
+  <h3>Status icons in the tree</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Icon</th><th>Meaning</th></tr>
+    <tr><td style="color:var(--good)">✓ green check</td><td>Fully defined</td></tr>
+    <tr><td style="color:var(--warn)">? question mark</td><td>Missing required input. Usually scope ("No Selection") or a magnitude of 0. Look for the yellow-highlighted field in Details.</td></tr>
+    <tr><td style="color:var(--warn)">⚡ lightning</td><td>Ready but needs to be solved/meshed</td></tr>
+    <tr><td style="color:var(--bad)">✗ / red</td><td>Failed</td></tr>
+    <tr><td>green ↓ arrow / pause</td><td>Solving / interrupted</td></tr>
+  </table></div>
+
+  <h3>Scoping: telling Mechanical "where"</h3>
+  <p>Almost every object (support, load, mesh control, result) needs a <b>Scope</b>: the geometry it applies to. The pattern is always the same:</p>
+  <ol class="steps">
+    <li>Set the <b>selection filter</b> in the toolbar: Body, Face, Edge, or Vertex (shortcuts <kbd>Ctrl+B</kbd>, <kbd>Ctrl+F</kbd>, <kbd>Ctrl+E</kbd>, <kbd>Ctrl+P</kbd>).</li>
+    <li>Click the geometry. <kbd>Ctrl</kbd>+click to add more. Click-and-drag paints across multiple faces.</li>
+    <li>In the Details pane, click the yellow <b>Geometry</b> field and press <b>Apply</b>.</li>
+  </ol>
+  <p>Or switch <b>Scoping Method</b> to <i>Named Selection</i> and pick one from the dropdown. For anything you'll reuse (a load face, the area you'll refine the mesh at, the face you'll probe), make a Named Selection: select it, right-click → <b>Create Named Selection</b>.</p>
+  <div class="callout"><b class="t">Selecting hidden faces</b>Hover over a spot and the <b>Select Through</b> ladder pops up at bottom-left (stacked colored rectangles). Each rectangle is a face under the cursor, front to back. Click one to grab a face you can't see. Also: right-click a body → <i>Hide Body</i> to see inside an assembly.</div>
+
+  <h3>Body-level settings worth knowing</h3>
+  <p>Click a body under <b>Geometry</b>:</p>
+  <ul>
+    <li><b>Stiffness Behavior</b>: <i>Flexible</i> (default, meshed and deforms) or <i>Rigid</i> (no mesh, moves as a single block; great for big stiff parts you only need to transmit load through).</li>
+    <li><b>Suppressed</b>: Yes removes the body from the analysis without deleting it from CAD. Right-click → Suppress Body.</li>
+    <li><b>Assignment</b>: the material.</li>
+    <li><b>Thickness</b>: only for surface bodies.</li>
+  </ul>
+
+  <h3>Coordinate systems</h3>
+  <p>Everything defaults to the <b>Global Coordinate System</b> from CAD. If your load points along a weird angle (a steering link at 23°), make a local one: right-click Coordinate Systems → <b>Insert › Coordinate System</b>, scope it to a face or set origin and axes by hand. Any load or support that has a <i>Coordinate System</i> field can then use it. Cylindrical coordinate systems (Type: Cylindrical) are used for radial/tangential results and for loads like radial displacement.</p>
+</section>
+
+<!-- ============================================================ 05 -->
+<section class="module" id="mod-connections" data-title="Contacts, joints, springs" data-group="Setting up the model">
+  <div class="module-head"><div class="tag">MODULE 05</div><h2>Connections: contacts, joints, springs</h2><p>How separate bodies talk to each other. Get this wrong and load either can't get through or gets through in the wrong way.</p></div>
+
+  <p>Separate bodies don't know about each other unless something connects them. When you open Mechanical, it auto-detects faces that are touching (within a tolerance) and creates <b>Contact Regions</b> under <span class="path">Connections › Contacts</span>. All of them default to <b>Bonded</b>. That default is often fine and sometimes badly wrong.</p>
+
+  <h3>The five contact types</h3>
+  <figure>
+    <svg viewBox="0 0 790 200" role="img" aria-label="Contact types: what is allowed to happen">
+      <defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
+      <g font-size="12" class="svg-text">
+        <g transform="translate(10,20)"><rect x="10" y="60" width="110" height="34" class="svg-part"/><rect x="10" y="26" width="110" height="34" class="svg-part" style="fill:var(--panel)"/><line x1="10" y1="60" x2="120" y2="60" stroke="var(--good)" stroke-width="4"/><text x="18" y="125">Bonded</text><text x="0" y="145" class="svg-muted" font-size="11">no gap, no slide</text></g>
+        <g transform="translate(160,20)"><rect x="10" y="60" width="110" height="34" class="svg-part"/><rect x="22" y="26" width="110" height="34" class="svg-part" style="fill:var(--panel)"/><line x1="125" y1="43" x2="150" y2="43" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah2)"/><text x="0" y="125">No Separation</text><text x="0" y="145" class="svg-muted" font-size="11">slides, can't lift</text></g>
+        <g transform="translate(310,20)"><rect x="10" y="60" width="110" height="34" class="svg-part"/><rect x="22" y="16" width="110" height="34" class="svg-part" style="fill:var(--panel)"/><line x1="125" y1="33" x2="150" y2="33" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah2)"/><line x1="60" y1="14" x2="60" y2="-6" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah2)"/><text x="10" y="125">Frictionless</text><text x="0" y="145" class="svg-muted" font-size="11">slides + lifts, μ=0</text></g>
+        <g transform="translate(460,20)"><rect x="10" y="60" width="110" height="34" class="svg-part"/><rect x="10" y="16" width="110" height="34" class="svg-part" style="fill:var(--panel)"/><line x1="60" y1="14" x2="60" y2="-6" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah2)"/><text x="30" y="125">Rough</text><text x="0" y="145" class="svg-muted" font-size="11">lifts, no slide</text></g>
+        <g transform="translate(610,20)"><rect x="10" y="60" width="110" height="34" class="svg-part"/><rect x="16" y="16" width="110" height="34" class="svg-part" style="fill:var(--panel)"/><line x1="125" y1="33" x2="140" y2="33" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah2)"/><line x1="60" y1="14" x2="60" y2="-6" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah2)"/><text x="16" y="125">Frictional</text><text x="0" y="145" class="svg-muted" font-size="11">lifts; slips past μN</text></g>
+      </g>
+    </svg>
+    <figcaption>What each contact type lets the two faces do. Only Bonded and No Separation are linear.</figcaption>
+  </figure>
+  <div class="table-wrap"><table>
+    <tr><th>Type</th><th>Can separate?</th><th>Can slide?</th><th>Linear?</th><th>Use for</th></tr>
+    <tr><td><b>Bonded</b></td><td class="y">No</td><td class="y">No</td><td class="n">Yes</td><td>Welds, glue, parts you're treating as one piece, quick first runs of bolted joints</td></tr>
+    <tr><td><b>No Separation</b></td><td class="y">No</td><td class="n">Yes (μ=0)</td><td class="n">Yes</td><td>Rarely; sliding interfaces where you know they stay in contact</td></tr>
+    <tr><td><b>Frictionless</b></td><td class="n">Yes</td><td class="n">Yes (μ=0)</td><td class="y">No</td><td>Pin in a hole, part resting on another, interference fits</td></tr>
+    <tr><td><b>Rough</b></td><td class="n">Yes</td><td class="y">No</td><td class="y">No</td><td>Clamped faces you assume never slip</td></tr>
+    <tr><td><b>Frictional</b></td><td class="n">Yes</td><td class="v">If force &gt; μN</td><td class="y">No</td><td>Bolted joints done properly (μ≈0.15–0.3 steel on steel), press fits, anything where slip matters</td></tr>
+  </table></div>
+
+  <div class="callout warn"><b class="t">Why bonded can lie</b>Two plates bolted together and pulled apart: in reality the plates gap open away from the bolt and the bolt carries the load. With Bonded contact, the plates are welded along the entire touching face, so the joint is far stiffer and the stress flows through areas that would actually be separated. Fine for checking a part far from the joint; wrong for checking the joint itself.</div>
+
+  <h3>Contact settings that matter</h3>
+  <ul>
+    <li><b>Contact vs Target.</b> Each region has two sides. Rule of thumb: the <b>contact</b> side should be the finer mesh / convex / softer surface; the <b>target</b> the coarser / concave / stiffer one. For a pin in a hole: pin = contact, hole = target. Right-click → <i>Flip Contact/Target</i>.</li>
+    <li><b>Behavior</b>: Symmetric (default for some types, both sides checked) vs Asymmetric (one-way). Asymmetric with the correct contact/target choice is cleaner for nonlinear contact.</li>
+    <li><b>Formulation</b>: Program Controlled is fine to start. <i>Augmented Lagrange</i> (default for most nonlinear contact) and <i>Pure Penalty</i> allow a tiny penetration; <i>Normal Lagrange</i> allows none but is harder to converge; <i>MPC</i> is excellent for bonded (ties nodes with equations, no penetration, no fake stiffness).</li>
+    <li><b>Pinball Region</b>: the search radius for detecting contact. If parts are slightly apart in CAD and Bonded isn't connecting them, the gap is bigger than the pinball. Increase it (or fix the CAD).</li>
+    <li><b>Interface Treatment</b> (nonlinear types): <i>Adjust to Touch</i> closes small initial gaps so parts start touching. Very useful when CAD tolerance leaves a 0.01 mm gap that would otherwise let a part fly away.</li>
+  </ul>
+
+  <h3>Contact Tool: check before you solve</h3>
+  <p>Right-click <b>Connections</b> → <span class="path">Insert › Contact Tool</span>, then right-click it → <b>Generate Initial Contact Results</b>. You get a table of every contact region with its initial <b>Status</b> (Closed, Near, Far) and gap/penetration. Any nonlinear contact that's <b>Far Open</b> at the start isn't touching, and the parts may be unconstrained. Fix it before burning time on a solve.</p>
+  <p>After solving, insert a <b>Contact Tool</b> under Solution for <i>Status</i>, <i>Pressure</i>, <i>Penetration</i>, <i>Sliding Distance</i>. Contact pressure on a bolted joint face is very satisfying and very informative.</p>
+
+  <h3>Joints: kinematic connections</h3>
+  <p>A joint connects two things (two bodies, or a body to <b>ground</b>) and specifies which of the 6 relative DOF are free. No contact detection, no mesh at the interface, just constraint equations. Insert from <span class="path">Connections › Joint</span>.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Joint</th><th>Free DOF</th><th>Real-world example</th></tr>
+    <tr><td>Fixed</td><td>none</td><td>Rigid attachment (like bonded, but between remote points)</td></tr>
+    <tr><td>Revolute</td><td>ROTZ</td><td>Hinge, control arm pivot, door</td></tr>
+    <tr><td>Cylindrical</td><td>UZ, ROTZ</td><td>Pin that can also slide along its axis</td></tr>
+    <tr><td>Translational</td><td>UX</td><td>Linear slide, piston</td></tr>
+    <tr><td>Slot</td><td>UX, ROTX, ROTY, ROTZ</td><td>Ball in a slot</td></tr>
+    <tr><td>Universal</td><td>ROTX, ROTZ</td><td>U-joint in a steering column or driveshaft</td></tr>
+    <tr><td>Spherical</td><td>ROTX, ROTY, ROTZ</td><td>Ball joint, rod end (heim joint)</td></tr>
+    <tr><td>Planar</td><td>UX, UY, ROTZ</td><td>Puck sliding on a table</td></tr>
+    <tr><td>General / Bushing</td><td>you pick; bushing adds stiffness per DOF</td><td>Rubber bushing, compliant mount</td></tr>
+  </table></div>
+  <p style="font-size:14px;color:var(--muted)">DOF are in the joint's own coordinate system, where Z is the joint axis. Always check the little triad Mechanical draws on the joint.</p>
+  <p><b>Body-Ground</b> joints act like supports: a Revolute body-ground joint on a hole lets the part spin about the hole's axis and nothing else. <b>Body-Body</b> joints connect parts. Joints carry <b>Joint Probe</b> results (force and moment through the joint), which is exactly what you want for, say, reaction forces at each suspension pickup.</p>
+
+  <h3>Springs and beam connections</h3>
+  <ul>
+    <li><b>Spring</b> (<span class="path">Connections › Spring</span>): linear stiffness (N/mm) and optional damping between two points or body-to-ground. Model a shock/coilover as a spring between its two mount points.</li>
+    <li><b>Beam connection</b> (<span class="path">Connections › Beam</span>): a circular line element between two faces with a real radius and material. A quick and decent way to represent a bolt without modeling a bolt body. You can read axial force and bending moment in it with a Beam Probe.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 06 -->
+<section class="module" id="mod-mesh" data-title="Meshing" data-group="Setting up the model">
+  <div class="module-head"><div class="tag">MODULE 06</div><h2>Meshing</h2><p>The mesh is your resolution. Fine where the answer is, coarse everywhere else, and prove it's fine enough.</p></div>
+
+  <p>Click <b>Mesh</b> → <b>Generate</b> (or right-click → Generate Mesh). With zero setup, Mechanical will mesh almost anything. The question is whether that mesh is good enough to answer your question. Default meshes are usually fine for deflection and too coarse for peak stress at fillets and holes.</p>
+
+  <h3>Element types you'll actually see</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Element</th><th>Shape</th><th>Nodes</th><th>Used for</th></tr>
+    <tr><td><code>SOLID187</code></td><td>Tetrahedron (quadratic)</td><td>10</td><td>Default for complex solids. Handles any shape.</td></tr>
+    <tr><td><code>SOLID186</code></td><td>Hex/brick (quadratic)</td><td>20</td><td>Sweepable solids. More accurate per element.</td></tr>
+    <tr><td><code>SHELL181</code></td><td>Quad/tri shell</td><td>4</td><td>Surface bodies (sheet metal, thin walls)</td></tr>
+    <tr><td><code>BEAM188</code></td><td>Line</td><td>2 (+ orientation)</td><td>Line bodies (frames, trusses)</td></tr>
+    <tr><td><code>CONTA174 / TARGE170</code></td><td>Contact surface layers</td><td></td><td>Auto-created on contact faces</td></tr>
+  </table></div>
+  <p><b>Element Order</b> (Mesh Details → Defaults): <i>Program Controlled</i> gives quadratic (midside nodes) for solids. Keep it. Linear tets (4-node) are notoriously too stiff in bending; a cantilever meshed with a couple of linear tets through the thickness can under-predict deflection by a lot.</p>
+
+  <figure>
+    <svg viewBox="0 0 760 170" role="img" aria-label="Linear vs quadratic elements">
+      <g class="svg-text" font-size="12">
+        <g transform="translate(40,20)">
+          <polygon points="10,110 120,110 65,15" fill="none" stroke="var(--text)" stroke-width="2"/>
+          <g fill="var(--accent)"><circle cx="10" cy="110" r="5"/><circle cx="120" cy="110" r="5"/><circle cx="65" cy="15" r="5"/></g>
+          <text x="10" y="140">Linear: straight edges</text>
+        </g>
+        <g transform="translate(290,20)">
+          <path d="M10 110 Q65 125 120 110 Q105 55 65 15 Q25 55 10 110" fill="none" stroke="var(--text)" stroke-width="2"/>
+          <g fill="var(--accent)"><circle cx="10" cy="110" r="5"/><circle cx="120" cy="110" r="5"/><circle cx="65" cy="15" r="5"/></g>
+          <g fill="var(--accent-2)"><circle cx="65" cy="117" r="5"/><circle cx="96" cy="60" r="5"/><circle cx="34" cy="60" r="5"/></g>
+          <text x="-10" y="140">Quadratic: midside nodes, curved</text>
+        </g>
+        <g transform="translate(560,20)">
+          <rect x="10" y="20" width="150" height="90" fill="none" stroke="var(--text)" stroke-width="1"/>
+          <text x="20" y="45" font-size="11">Quadratic elements</text>
+          <text x="20" y="62" font-size="11">capture curved holes,</text>
+          <text x="20" y="79" font-size="11">bend correctly, and</text>
+          <text x="20" y="96" font-size="11">need far fewer elements</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>Quadratic elements have midside nodes, so edges (and the displacement field) can curve. That's why Program Controlled defaults to them.</figcaption>
+  </figure>
+
+  <h3>The mesh controls (right-click Mesh → Insert)</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Control</th><th>What it does</th><th>When</th></tr>
+    <tr><td><b>Sizing</b> (body)</td><td>Max element size in a whole body</td><td>Global resolution for one part</td></tr>
+    <tr><td><b>Sizing</b> (face/edge)</td><td>Element size or number of divisions on a face/edge</td><td>Refine a fillet, hole edge, weld toe</td></tr>
+    <tr><td><b>Sizing → Sphere of Influence</b></td><td>Small size only inside a sphere around a point</td><td>Local refinement without changing a whole face</td></tr>
+    <tr><td><b>Method</b></td><td>Tetrahedrons / Hex Dominant / Sweep / MultiZone</td><td>Force hex meshes on sweepable or blocky parts</td></tr>
+    <tr><td><b>Face Meshing</b></td><td>Mapped quad/hex pattern on a face</td><td>Clean structured meshes around holes</td></tr>
+    <tr><td><b>Refinement</b></td><td>Splits existing elements 1–3 times</td><td>Quick local refinement</td></tr>
+    <tr><td><b>Contact Sizing</b></td><td>Same element size on both sides of a contact</td><td>Better contact pressure results</td></tr>
+  </table></div>
+
+  <h3>Global settings (Mesh Details)</h3>
+  <ul>
+    <li><b>Physics Preference</b>: Mechanical (for structural).</li>
+    <li><b>Element Size</b>: overall target size. Start around 1/20 to 1/50 of the part's main dimension and refine from there.</li>
+    <li><b>Resolution / Span Angle / Capture Curvature / Capture Proximity</b>: auto-refinement on curved faces and thin gaps. Curvature capture is cheap and usually worth turning on.</li>
+    <li><b>Defeature Size</b>: features smaller than this get ignored by the mesher.</li>
+  </ul>
+
+  <h3>Rules of thumb</h3>
+  <ul>
+    <li><b>Through thickness</b>: at least 2 quadratic elements (3+ is safer) through any wall that bends, if you care about bending stress there.</li>
+    <li><b>Around a fillet or hole where you read peak stress</b>: aim for several elements around the arc (roughly 8–12 per 90° for good peaks). Then prove it with a convergence study (Module 12).</li>
+    <li>Use <b>Named Selections</b> on the critical faces so you can refine them repeatedly.</li>
+    <li>Coarse mesh far away is fine. Stiffness there barely affects your hot spot.</li>
+  </ul>
+
+  <h3>Checking quality</h3>
+  <p>Mesh Details → <b>Quality → Mesh Metric</b>. Pick a metric and you get a bar chart; click a bar to see where those elements are.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Metric</th><th>Ideal</th><th>Worry if</th></tr>
+    <tr><td>Element Quality</td><td>1</td><td>&lt; ~0.2 in a high-stress region</td></tr>
+    <tr><td>Skewness</td><td>0</td><td>&gt; ~0.9 (&gt; 0.95 is bad anywhere)</td></tr>
+    <tr><td>Aspect Ratio</td><td>1</td><td>&gt; ~20 where stress gradients are steep</td></tr>
+    <tr><td>Jacobian Ratio</td><td>1</td><td>&gt; ~40 (quadratic elements)</td></tr>
+  </table></div>
+  <p style="font-size:14px;color:var(--muted)">These are common guidelines, not hard limits. A few ugly elements in a low-stress region don't matter; one ugly element at your peak stress does.</p>
+  <p>Also look at the <b>Statistics</b> section (node and element count). The Student license caps the model at <b>128,000 nodes/elements</b> for structural; you'll hit that faster than you think, which is another reason to refine locally rather than globally.</p>
+</section>
+
+<!-- ============================================================ 07 -->
+<section class="module" id="mod-settings" data-title="Analysis Settings" data-group="Setting up the model">
+  <div class="module-head"><div class="tag">MODULE 07</div><h2>Analysis Settings</h2><p>The first object under the environment. Mostly leave alone, but know these six things.</p></div>
+
+  <div class="table-wrap"><table>
+    <tr><th>Setting</th><th>Default</th><th>Change it when</th></tr>
+    <tr><td><b>Number of Steps</b></td><td>1</td><td>Loads applied in sequence: e.g. step 1 bolt pretension, step 2 external load. Each step's load values go in the Tabular Data window.</td></tr>
+    <tr><td><b>Auto Time Stepping / Substeps</b></td><td>Program Controlled</td><td>Nonlinear runs that won't converge: increase Initial and Minimum Substeps (e.g. 10/10/100) so load is applied in smaller bites.</td></tr>
+    <tr><td><b>Large Deflection</b></td><td>Off</td><td>Deflection is large compared to the part (rule of thumb: more than ~5% of a key dimension, or anything rotating noticeably, thin flexures, cables, snap fits). Makes it <span class="pill nl">nonlinear</span>.</td></tr>
+    <tr><td><b>Weak Springs</b></td><td>Program Controlled</td><td>Mechanical adds tiny ground springs if the model looks barely constrained. Check the reaction on them is ~0. Turn Off to see if your model is truly constrained.</td></tr>
+    <tr><td><b>Inertia Relief</b></td><td>Off</td><td>Free-floating structure with balanced loads (an aircraft in flight, a whole car frame under its own inertial loads). Balances applied loads with inertial forces so you don't need supports.</td></tr>
+    <tr><td><b>Solver Type</b></td><td>Program Controlled</td><td>Rarely. Direct (sparse) is robust; Iterative (PCG) is faster for big bulky solid models.</td></tr>
+    <tr><td><b>Output Controls</b></td><td>Stress, Strain on</td><td>Turn on <i>Nodal Forces</i> if you want to probe reactions on a face that isn't a support, or for Bolt/Joint results in some cases.</td></tr>
+  </table></div>
+
+  <h3>Steps, time, and Tabular Data</h3>
+  <p>In a static analysis "time" is just a counter for load steps. With 2 steps ending at time 1 and 2, any load can have a different magnitude in each step: click the load, and in its Details set Magnitude to <b>Tabular</b>, then type the table at bottom-right. Results can be viewed at any time point (Details → Display Time).</p>
+  <div class="math">Time [s] | Force [N]
+   0     |    0
+   1     |    0      ← step 1: only bolt pretension acts
+   2     | 5000      ← step 2: external load ramps on</div>
+
+  <h3>Solution Information: the solver's diary</h3>
+  <p>Click <b>Solution Information</b> during/after a solve. The text output shows warnings (read them!), and for nonlinear runs you can set Solution Output to <i>Force Convergence</i> to watch the residual (magenta) dropping below the criterion (cyan) every iteration. If the magenta line bounces and never dips under, it's not converging; usually contact chattering or an unconstrained part.</p>
+</section>
+
+<!-- ============================================================ 08 -->
+<section class="module" id="mod-supports" data-title="Supports, all of them" data-group="Boundary conditions">
+  <div class="module-head"><div class="tag">MODULE 08</div><h2>Supports, every one of them</h2><p>Supports are where your model meets the rest of the world. They're the single biggest source of wrong answers.</p></div>
+
+  <p>Supports live in the <b>Environment</b> context tab (click the <i>Static Structural</i> branch and the ribbon changes) under the <b>Supports</b> dropdown. Or right-click the Static Structural branch → <span class="path">Insert</span>. Every support <b>removes</b> degrees of freedom: it sets displacements to known values (usually zero) and the solver calculates whatever <b>reaction force</b> is needed to hold them there.</p>
+
+  <div class="callout analogy"><b class="t">The mental model</b>Every support is a claim about the real world: "this face cannot move in this direction, no matter how much force it takes." Real attachments are never infinitely stiff, so every support is a little bit of a lie. The art is picking the lie that doesn't matter for your question.</div>
+
+  <h3>Quick reference: what each one locks</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Support</th><th>Applies to</th><th>Normal</th><th>In-plane / tangential</th><th>Rotation (shell/beam)</th><th>Linear?</th></tr>
+    <tr><td><a href="#sup-fixed">Fixed Support</a></td><td>face, edge, vertex, body</td><td class="y">fixed</td><td class="y">fixed</td><td class="y">fixed</td><td class="n">yes</td></tr>
+    <tr><td><a href="#sup-disp">Displacement</a></td><td>face, edge, vertex</td><td colspan="3" class="v" style="text-align:center">each of X/Y/Z: Free, 0, or a value (translations only)</td><td class="n">yes</td></tr>
+    <tr><td><a href="#sup-remote">Remote Displacement</a></td><td>face, edge, vertex (via remote point)</td><td colspan="3" class="v" style="text-align:center">each of UX UY UZ ROTX ROTY ROTZ: Free, 0, or a value</td><td class="n">yes*</td></tr>
+    <tr><td><a href="#sup-frictionless">Frictionless Support</a></td><td>face</td><td class="y">fixed</td><td class="n">free</td><td>n/a</td><td class="n">yes</td></tr>
+    <tr><td><a href="#sup-compression">Compression Only</a></td><td>face</td><td class="v">fixed inward only</td><td class="n">free</td><td>n/a</td><td class="y">no</td></tr>
+    <tr><td><a href="#sup-cyl">Cylindrical Support</a></td><td>cylindrical face</td><td colspan="3" class="v" style="text-align:center">Radial / Axial / Tangential: each Fixed or Free</td><td class="n">yes</td></tr>
+    <tr><td><a href="#sup-simply">Simply Supported</a></td><td>shell/beam edge or vertex</td><td class="y">fixed</td><td class="y">fixed</td><td class="n">free</td><td class="n">yes</td></tr>
+    <tr><td><a href="#sup-fixrot">Fixed Rotation</a></td><td>shell/beam face, edge, vertex</td><td class="n">free</td><td class="n">free</td><td class="y">fixed</td><td class="n">yes</td></tr>
+    <tr><td><a href="#sup-elastic">Elastic Support</a></td><td>face</td><td colspan="3" class="v" style="text-align:center">spring foundation, stiffness per area</td><td class="n">yes</td></tr>
+  </table></div>
+  <p style="font-size:13px;color:var(--muted)">*Remote Displacement with Rigid behavior plus Large Deflection becomes nonlinear. Solid elements have no rotational DOF, so a Fixed Support on a solid face fixes only translations; that's still enough, since a face held in X, Y, Z can't rotate.</p>
+
+  <h3>Not sure which one? Try the picker</h3>
+  <div class="picker" id="picker"></div>
+
+  <h3>Every support in detail</h3>
+  <div class="cards">
+
+  <!-- Fixed -->
+  <div class="card" id="sup-fixed">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><rect x="40" y="35" width="110" height="60" class="svg-part"/><g stroke="var(--text)" stroke-width="1.5"><line x1="40" y1="30" x2="40" y2="100"/><line x1="40" y1="38" x2="28" y2="50"/><line x1="40" y1="52" x2="28" y2="64"/><line x1="40" y1="66" x2="28" y2="78"/><line x1="40" y1="80" x2="28" y2="92"/><line x1="40" y1="94" x2="28" y2="106"/></g><rect x="38" y="35" width="5" height="60" fill="#6e6eff"/><text x="60" y="122" font-size="10" class="svg-muted">all DOF = 0</text></svg></div>
+      <div class="card-body">
+        <h4>Fixed Support</h4>
+        <div class="where">Environment › Supports › Fixed Support · scope: face / edge / vertex / body</div>
+        <p>Every node on the selected geometry is held at zero displacement in X, Y and Z (and zero rotation on shells/beams). The most common support, and the most abused.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">infinitely stiff</span><span class="pill">singularity risk at edges</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use when</b> the face is welded, bolted, or clamped to something much stiffer than the part, and you care about stresses <i>away</i> from that face. Classic textbook cantilever.</p>
+      <p><b>Gotcha 1: it's too stiff.</b> A real bolted base plate flexes; a fixed face doesn't. Poisson contraction is also blocked at the face, which creates fake stress concentrations right at the edge of the support. Don't report the peak stress at the edge of a Fixed Support. Look a short distance away, or make the support more realistic.</p>
+      <p><b>Gotcha 2: bolt holes.</b> Putting Fixed Support on the inside faces of bolt holes is a common shortcut. It's stiffer than reality and gives high, mesh-dependent stresses at the hole edges. OK for global stiffness; not OK for checking the holes. Use Cylindrical Support or model the bolts.</p>
+      <p><b>Example:</b> a Baja seat-mount tab welded to the frame: Fixed Support on the face welded to the tube, force on the bolt hole. You trust the stress at the tab's hole, and you'd check the weld separately.</p>
+    </div></details>
+  </div>
+
+  <!-- Displacement -->
+  <div class="card" id="sup-disp">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="m1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs><rect x="40" y="35" width="110" height="60" class="svg-part"/><rect x="38" y="35" width="5" height="60" fill="var(--accent)"/><line x1="25" y1="65" x2="25" y2="25" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#m1)"/><text x="10" y="20" font-size="11" class="svg-text">Y=2mm</text><text x="5" y="118" font-size="10" class="svg-muted">X=0, Z=free</text></svg></div>
+      <div class="card-body">
+        <h4>Displacement</h4>
+        <div class="where">Environment › Supports › Displacement · scope: face / edge / vertex</div>
+        <p>Set each translational component (X, Y, Z) to <b>Free</b>, <b>0</b>, or a <b>value</b>, in any coordinate system. A Fixed Support is just a Displacement with all three = 0.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">enforced motion</span><span class="pill">per-component</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use when</b> you need to constrain only some directions (a roller: Y = 0, X and Z free), or to <b>push</b> the part a known distance (enforced displacement: "how much force to deflect this spring tab 3 mm?" Then read the reaction force).</p>
+      <p><b>Coordinate System</b> field lets you use a local or cylindrical system. Displacement in a cylindrical CS with Radial = 0 is another way to hold a hole round.</p>
+      <p><b>Gotcha:</b> nonzero displacements on a face force every node on that face to move by exactly that amount, so the face stays perfectly flat and moves as a rigid plate. That's stiff, like Fixed.</p>
+      <p><b>Example:</b> testing a leaf-spring or a flexure: Fixed one end, Displacement Y = −5 mm on the other end, read reaction to get stiffness k = F/δ.</p>
+    </div></details>
+  </div>
+
+  <!-- Remote Displacement -->
+  <div class="card" id="sup-remote">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><rect x="20" y="35" width="90" height="60" class="svg-part"/><circle cx="155" cy="65" r="6" fill="var(--accent-2)"/><g stroke="var(--accent-2)" stroke-width="1.2" stroke-dasharray="3 3"><line x1="110" y1="38" x2="155" y2="65"/><line x1="110" y1="52" x2="155" y2="65"/><line x1="110" y1="65" x2="155" y2="65"/><line x1="110" y1="78" x2="155" y2="65"/><line x1="110" y1="92" x2="155" y2="65"/></g><rect x="108" y="35" width="5" height="60" fill="var(--accent-2)"/><text x="122" y="95" font-size="10" class="svg-text">6 DOF</text><text x="10" y="120" font-size="10" class="svg-muted">remote point at hub/pin</text></svg></div>
+      <div class="card-body">
+        <h4>Remote Displacement</h4>
+        <div class="where">Environment › Supports › Remote Displacement · scope: face / edge / vertex</div>
+        <p>Constrains a point in space (the <b>remote point</b>) that's tied to the selected face. You control all 6 DOF: UX, UY, UZ, ROTX, ROTY, ROTZ, each Free / 0 / value. This is how you give a solid face rotational constraints or freedoms.</p>
+        <div class="pills"><span class="pill">linear*</span><span class="pill">6 DOF</span><span class="pill">rigid / deformable behavior</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use when</b> the support is something you didn't model: a hub, a bearing, a frame, the center of a pin. Put the remote point's <b>Location</b> where the real connection's center is, and free the rotations that the real connection allows.</p>
+      <p><b>Behavior</b> matters a lot (see Module 10):</p>
+      <ul>
+        <li><b>Rigid</b>: the face is welded to an infinitely stiff spider. Face can't deform at all. Stiffens the part.</li>
+        <li><b>Deformable</b>: the face can warp; the remote point gets the average motion. Usually more realistic. Check which one your version defaulted to; it's the first thing to look at in Details.</li>
+        <li><b>Coupled</b>: all nodes share the same displacement in the constrained directions.</li>
+      </ul>
+      <p><b>Example (pin joint):</b> a clevis hole on a control arm pivot. Remote Displacement scoped to the hole face, location at hole center: UX=UY=UZ=0, ROTX=ROTY=0, ROTZ (pin axis) = Free. Now the arm can pivot but the pin holds it. Use a local coordinate system so Z is the pin axis.</p>
+    </div></details>
+  </div>
+
+  <!-- Frictionless -->
+  <div class="card" id="sup-frictionless">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><rect x="40" y="25" width="110" height="60" class="svg-part"/><line x1="25" y1="85" x2="165" y2="85" stroke="var(--text)" stroke-width="2"/><g fill="none" stroke="var(--text)"><circle cx="60" cy="91" r="5"/><circle cx="95" cy="91" r="5"/><circle cx="130" cy="91" r="5"/></g><line x1="25" y1="97" x2="165" y2="97" stroke="var(--text)"/><rect x="40" y="82" width="110" height="4" fill="#6e6eff"/><text x="10" y="120" font-size="10" class="svg-muted">normal fixed, slides free</text></svg></div>
+      <div class="card-body">
+        <h4>Frictionless Support</h4>
+        <div class="where">Environment › Supports › Frictionless Support · scope: faces</div>
+        <p>Locks motion <b>normal</b> to the face (both into and out of it) and lets the face slide freely in-plane. Think "glued to a frictionless rail": can't lift off, can't push in, slides anywhere along the surface.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">symmetry planes</span><span class="pill">rollers</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for symmetry.</b> This is <i>the</i> symmetry boundary condition for solids: on a symmetry plane, material can't cross the plane but moves freely along it. Half a pressure vessel, half a beam, a quarter of a plate with a hole.</p>
+      <p><b>Use for rollers / slides</b> where the part is held against a flat surface and can't lift (bolted but slotted holes, a part in a guide).</p>
+      <p><b>Gotcha:</b> it holds the face in both directions. If the real part could lift off the floor, use Compression Only instead. And frictionless supports alone often leave the model free to slide; you usually need something else to stop in-plane rigid body motion.</p>
+      <p><b>Alternative:</b> Mechanical also has a dedicated <b>Symmetry</b> object (right-click <i>Model</i> → Insert → Symmetry → Symmetry Region) which does the same thing and also mirrors the results for display.</p>
+    </div></details>
+  </div>
+
+  <!-- Compression only -->
+  <div class="card" id="sup-compression">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="m2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs><path d="M40 20 L150 32 L150 82 L40 82 Z" class="svg-part"/><line x1="20" y1="84" x2="170" y2="84" stroke="var(--text)" stroke-width="2"/><g stroke="var(--text)"><line x1="30" y1="84" x2="20" y2="96"/><line x1="55" y1="84" x2="45" y2="96"/><line x1="80" y1="84" x2="70" y2="96"/><line x1="105" y1="84" x2="95" y2="96"/><line x1="130" y1="84" x2="120" y2="96"/><line x1="155" y1="84" x2="145" y2="96"/></g><line x1="150" y1="78" x2="150" y2="55" stroke="var(--accent)" stroke-width="2" marker-end="url(#m2)"/><text x="5" y="120" font-size="10" class="svg-muted">pushes back, never pulls</text></svg></div>
+      <div class="card-body">
+        <h4>Compression Only Support</h4>
+        <div class="where">Environment › Supports › Compression Only Support · scope: faces</div>
+        <p>Prevents the face from moving <b>into</b> the support, but lets it lift away. Internally it's frictionless contact against a rigid surface.</p>
+        <div class="pills"><span class="pill nl">nonlinear</span><span class="pill">lift-off</span><span class="pill">bearing on a pin</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use when</b> a part rests on something and could rock or lift: a base plate on a floor, a lug pressed against a pin (only the loaded half of the hole carries load), a bracket bearing on a frame.</p>
+      <p><b>Classic use: pin-loaded hole.</b> Compression Only on the inside of a hole correctly lets the unloaded side of the hole pull away, giving a realistic contact pressure distribution on the loaded side.</p>
+      <p><b>Gotchas:</b> it's <span class="pill nl">nonlinear</span>, so solve time goes up. Since it's frictionless, nothing stops sliding along the face; add something else to stop in-plane motion, or the solver complains about rigid body motion. Check the reaction afterwards: if it's zero, the face lifted off entirely.</p>
+    </div></details>
+  </div>
+
+  <!-- Cylindrical -->
+  <div class="card" id="sup-cyl">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><rect x="25" y="30" width="130" height="70" rx="8" class="svg-part"/><circle cx="90" cy="65" r="22" fill="var(--bg)" stroke="#6e6eff" stroke-width="4"/><defs><marker id="m3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs><path d="M118 50 A32 32 0 0 1 118 82" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#m3)"/><text x="5" y="120" font-size="10" class="svg-muted">radial / axial / tangential</text></svg></div>
+      <div class="card-body">
+        <h4>Cylindrical Support</h4>
+        <div class="where">Environment › Supports › Cylindrical Support · scope: cylindrical faces only</div>
+        <p>For holes and shafts. Three switches, each <b>Fixed</b> or <b>Free</b>: <b>Radial</b> (hole can't grow/shrink or shift), <b>Axial</b> (can't slide along axis), <b>Tangential</b> (can't spin about axis).</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">pins & bolts</span><span class="pill">small-deflection only</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Pivot / bushing:</b> Radial Fixed, Axial Fixed, Tangential <b>Free</b>. Part can rotate about the pin but not translate.</p>
+      <p><b>Bolt hole (simplified):</b> all three Fixed. Less stiff than a Fixed Support on the hole (which also stops the hole from ovalizing at all in every direction) but still holds the full circumference, including the side that would pull away in reality.</p>
+      <p><b>Gotcha:</b> holding the entire 360° radially is stiffer than reality for a pin-loaded hole (in reality only the loaded side bears). Compression Only Support or real pin + frictionless contact is more accurate for hole stress. Cylindrical Support is fine for "everything else" stress.</p>
+      <p><b>Gotcha 2:</b> the Tangential free option is only valid for small rotations. For large rotation use a Revolute joint.</p>
+    </div></details>
+  </div>
+
+  <!-- Simply Supported -->
+  <div class="card" id="sup-simply">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><line x1="25" y1="55" x2="155" y2="55" stroke="var(--text)" stroke-width="5"/><polygon points="30,58 20,78 40,78" fill="none" stroke="var(--text)" stroke-width="1.5"/><polygon points="150,58 140,78 160,78" fill="none" stroke="var(--text)" stroke-width="1.5"/><line x1="15" y1="80" x2="45" y2="80" stroke="var(--text)"/><line x1="135" y1="80" x2="165" y2="80" stroke="var(--text)"/><text x="5" y="115" font-size="10" class="svg-muted">shells/beams: pin, rot free</text></svg></div>
+      <div class="card-body">
+        <h4>Simply Supported</h4>
+        <div class="where">Environment › Supports › Simply Supported · scope: edges/vertices of surface or line bodies</div>
+        <p>Translations fixed, rotations free. The textbook "pinned" end of a beam or edge of a plate. Only meaningful on shell and beam models (solids have no rotations to free).</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">shell / beam only</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> a beam model of a simply-supported member, a plate whose edges sit on a frame but can rotate. On a frame modeled with line bodies, a Simply Supported vertex is a pin joint to ground.</p>
+      <p><b>On a solid?</b> Use Displacement (or Remote Displacement with rotations free) on an edge or a thin strip. A Displacement constraint on a single edge of a solid works as a pin, but it creates a stress singularity along that edge.</p>
+    </div></details>
+  </div>
+
+  <!-- Fixed Rotation -->
+  <div class="card" id="sup-fixrot">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><line x1="25" y1="60" x2="155" y2="60" stroke="var(--text)" stroke-width="5"/><g fill="none" stroke="var(--bad)" stroke-width="2"><path d="M30 40 A18 18 0 1 0 50 42"/><line x1="25" y1="30" x2="55" y2="55"/></g><text x="5" y="115" font-size="10" class="svg-muted">rot locked, translate free</text></svg></div>
+      <div class="card-body">
+        <h4>Fixed Rotation</h4>
+        <div class="where">Environment › Supports › Fixed Rotation · scope: surface/line body geometry</div>
+        <p>The reverse of Simply Supported: rotations fixed, translations free. Each rotation component can be set Fixed or Free. Shell/beam models only.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">shell / beam only</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> a guided end: an edge that can slide but must stay square (e.g. symmetry on a shell model, where the edge on the symmetry line must not rotate out of plane). Combine with a Displacement for the out-of-plane translation on a shell symmetry edge.</p>
+    </div></details>
+  </div>
+
+  <!-- Elastic -->
+  <div class="card" id="sup-elastic">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><rect x="35" y="22" width="110" height="45" class="svg-part"/><g fill="none" stroke="var(--accent-2)" stroke-width="1.5"><path d="M50 67 l0 4 l-6 4 l12 4 l-12 4 l12 4 l-6 4 l0 4"/><path d="M90 67 l0 4 l-6 4 l12 4 l-12 4 l12 4 l-6 4 l0 4"/><path d="M130 67 l0 4 l-6 4 l12 4 l-12 4 l12 4 l-6 4 l0 4"/></g><line x1="25" y1="96" x2="155" y2="96" stroke="var(--text)" stroke-width="2"/><text x="5" y="120" font-size="10" class="svg-muted">k per area (N/mm³)</text></svg></div>
+      <div class="card-body">
+        <h4>Elastic Support</h4>
+        <div class="where">Environment › Supports › Elastic Support · scope: faces</div>
+        <p>A bed of springs normal to the face. You enter <b>Foundation Stiffness</b> (pressure per displacement, e.g. N/mm³). Pressure on the face = stiffness × local normal displacement.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">rubber mounts, soil</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> a part on rubber isolators, a footing on soil, a pad on foam. It's also a softer, more honest alternative to a Fixed Support when you know roughly how stiff the mating structure is.</p>
+      <p><b>Getting a value:</b> if a mount has stiffness k (N/mm) and contact area A (mm²), foundation stiffness ≈ k/A (N/mm³).</p>
+      <p><b>Gotcha:</b> it acts normal only (and in tension too). It doesn't stop in-plane sliding, so add something else for that.</p>
+    </div></details>
+  </div>
+  </div>
+
+  <h3>Velocity (and other transient-only supports)</h3>
+  <p>In Transient Structural you'll also see <b>Velocity</b> (enforced velocity) and in Explicit Dynamics a few more. Same idea as Displacement, just prescribing velocity. Not available in Static Structural.</p>
+
+  <h3>Am I fully constrained? Two checks</h3>
+  <ol class="steps">
+    <li>Turn <b>Weak Springs</b> Off in Analysis Settings and solve. If it fails with a rigid body / pivot warning, you're underconstrained.</li>
+    <li>Or run a quick <b>Modal</b> analysis with your supports. Any mode at ~0 Hz is a rigid body motion you forgot to stop, and the mode shape shows you which way it's free.</li>
+  </ol>
+
+  <h3>Over-constraining is also a problem</h3>
+  <p>Adding more supports than reality has (fixing both ends of a part that's really fixed at one end and slotted at the other) doesn't just change stress. It can completely change the load path. A thermal expansion problem with both ends fixed makes enormous fake stress, because the part can't grow. Ask of every support: <i>does the real part push on something here, in this direction?</i></p>
+</section>
+
+<!-- ============================================================ 09 -->
+<section class="module" id="mod-loads" data-title="Loads, all of them" data-group="Boundary conditions">
+  <div class="module-head"><div class="tag">MODULE 09</div><h2>Loads, every one of them</h2><p>Loads build {F}. Same mental model as supports: every load is a claim about how force gets into the part.</p></div>
+
+  <p>Loads live in the <b>Environment</b> tab under <b>Loads</b> (structural loads), <b>Inertial</b> (gravity, acceleration, rotation), and <b>Conditions</b> (temperatures, joint loads). Most structural loads let you define direction in two ways:</p>
+  <ul>
+    <li><b>Vector</b>: pick a face/edge to define direction and type a magnitude. Arrow direction can be flipped in the graphics window.</li>
+    <li><b>Components</b>: type X, Y, Z values in a chosen coordinate system. More precise, easier to check, works well with a local CS for angled loads.</li>
+  </ul>
+  <p>And magnitude can be <b>Constant</b>, <b>Tabular</b> (varies per step), or a <b>Function</b> of time or position (e.g. linear pressure over a face).</p>
+
+  <h3>Quick reference</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Load</th><th>Applies to</th><th>Units</th><th>Use for</th></tr>
+    <tr><td><a href="#load-force">Force</a></td><td>face, edge, vertex</td><td>N</td><td>A total force spread over a face</td></tr>
+    <tr><td><a href="#load-pressure">Pressure</a></td><td>face, edge (2D)</td><td>MPa</td><td>Fluid/gas pressure, distributed contact load</td></tr>
+    <tr><td><a href="#load-remote">Remote Force</a></td><td>face, edge, vertex</td><td>N</td><td>Force applied at a point off the part (creates a moment)</td></tr>
+    <tr><td><a href="#load-moment">Moment</a></td><td>face, edge, vertex</td><td>N·mm</td><td>Torque, bending moment</td></tr>
+    <tr><td><a href="#load-bearing">Bearing Load</a></td><td>cylindrical face</td><td>N</td><td>Pin or shaft pushing on a hole</td></tr>
+    <tr><td><a href="#load-bolt">Bolt Pretension</a></td><td>cyl. face, body, beam connection</td><td>N or mm</td><td>Bolt preload</td></tr>
+    <tr><td><a href="#load-line">Line Pressure</a></td><td>edge</td><td>N/mm</td><td>Force per unit length along an edge</td></tr>
+    <tr><td><a href="#load-hydro">Hydrostatic Pressure</a></td><td>face</td><td>(density)</td><td>Pressure that grows with fluid depth</td></tr>
+    <tr><td><a href="#load-accel">Acceleration / Standard Earth Gravity</a></td><td>whole model</td><td>mm/s²</td><td>Self-weight, bump/brake/corner g-loads</td></tr>
+    <tr><td><a href="#load-rot">Rotational Velocity</a></td><td>whole model / bodies</td><td>rad/s, RPM</td><td>Spinning parts: CVT sheaves, rotors, flywheels</td></tr>
+    <tr><td><a href="#load-thermal">Thermal Condition</a></td><td>bodies</td><td>°C</td><td>Uniform temperature change → thermal stress</td></tr>
+    <tr><td><a href="#load-joint">Joint Load</a></td><td>joint</td><td>N, N·mm, mm, °</td><td>Driving a joint DOF</td></tr>
+  </table></div>
+
+  <h3>Every load in detail</h3>
+  <div class="cards">
+
+  <div class="card" id="load-force">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="mf" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs><rect x="30" y="55" width="120" height="45" class="svg-part"/><rect x="30" y="52" width="120" height="4" fill="var(--bad)"/><g stroke="var(--bad)" stroke-width="2"><line x1="45" y1="20" x2="45" y2="48" marker-end="url(#mf)"/><line x1="75" y1="20" x2="75" y2="48" marker-end="url(#mf)"/><line x1="105" y1="20" x2="105" y2="48" marker-end="url(#mf)"/><line x1="135" y1="20" x2="135" y2="48" marker-end="url(#mf)"/></g><text x="10" y="120" font-size="10" class="svg-muted">total F spread by area</text></svg></div>
+      <div class="card-body">
+        <h4>Force</h4>
+        <div class="where">Environment › Loads › Force · scope: face / edge / vertex</div>
+        <p>You type the <b>total</b> force. Mechanical divides it over the selected geometry as a uniform traction (force per area). Select three faces and type 300 N and you get 300 N total, split in proportion to area, not 300 N on each.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">total, not per-face</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use when</b> load comes in through a face and you don't know the exact distribution: a load pad, a mounting face, a handle grip.</p>
+      <p><b>Gotcha 1: vertex and edge forces are singularities.</b> A point force on a vertex puts finite force on zero area, so the local stress is theoretically infinite and will keep rising as you refine. Fine for global behavior; never read stress right at it. Use a small face (split a face in CAD to make a load patch) instead.</p>
+      <p><b>Gotcha 2: forces on holes.</b> Force on the full inside of a hole pushes on the whole 360°, pulling on the back half. That's not what a pin does. Use Bearing Load, or model the pin.</p>
+      <p><b>Gotcha 3: Force doesn't add stiffness.</b> The face is free to deform however it wants. Compare with Remote Force Rigid.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-pressure">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="mp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs><circle cx="90" cy="65" r="40" class="svg-part"/><circle cx="90" cy="65" r="26" fill="var(--bg)" stroke="var(--bad)" stroke-width="3"/><g stroke="var(--bad)" stroke-width="1.8"><line x1="90" y1="65" x2="90" y2="43" marker-end="url(#mp)"/><line x1="90" y1="65" x2="112" y2="65" marker-end="url(#mp)"/><line x1="90" y1="65" x2="90" y2="87" marker-end="url(#mp)"/><line x1="90" y1="65" x2="68" y2="65" marker-end="url(#mp)"/></g><text x="15" y="122" font-size="10" class="svg-muted">normal to face, per area</text></svg></div>
+      <div class="card-body">
+        <h4>Pressure</h4>
+        <div class="where">Environment › Loads › Pressure · scope: faces</div>
+        <p>Force per area. Default <b>Normal To</b>: acts perpendicular to the face everywhere, even on curved faces, and a positive value <b>pushes into</b> the face. Can also be defined by vector or components (then it's a directional traction).</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">MPa = N/mm²</span><span class="pill">follows curvature</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> internal pressure in a tank, cylinder, or brake caliper bore; air/water pressure on a panel; a known contact pressure.</p>
+      <p><b>Sign:</b> positive pushes into the selected face. For internal pressure in a pipe, select the <i>inside</i> faces and enter a positive value: it pushes into the material from the inside, i.e. outward from the axis. Negative pulls (suction).</p>
+      <p><b>Gotcha:</b> internal pressure in a closed tank also pushes on the end caps. If you've cut the model open, add the axial force the missing caps would have caused (p × π r²), or the axial stress will be missing.</p>
+      <p><b>Unit check:</b> 1 MPa = 1 N/mm² ≈ 145 psi. 1 bar = 0.1 MPa.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-remote">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="mr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs><rect x="15" y="40" width="70" height="50" class="svg-part"/><rect x="83" y="40" width="4" height="50" fill="var(--bad)"/><circle cx="150" cy="65" r="5" fill="var(--bad)"/><g stroke="var(--bad)" stroke-dasharray="3 3"><line x1="87" y1="42" x2="150" y2="65"/><line x1="87" y1="65" x2="150" y2="65"/><line x1="87" y1="88" x2="150" y2="65"/></g><line x1="150" y1="65" x2="150" y2="108" stroke="var(--bad)" stroke-width="2.5" marker-end="url(#mr)"/><text x="102" y="30" font-size="10" class="svg-text">F at offset r</text><text x="5" y="122" font-size="10" class="svg-muted">face sees F and M = F·r</text></svg></div>
+      <div class="card-body">
+        <h4>Remote Force</h4>
+        <div class="where">Environment › Loads › Remote Force · scope: face / edge / vertex</div>
+        <p>A force applied at a point in space (default: centroid of the selection, change via <b>Location</b> X/Y/Z or by picking a vertex) and transferred onto the selected face. Because it's offset, the face receives the force <b>and</b> the moment F × r, automatically.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">adds moment</span><span class="pill">rigid / deformable</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use when</b> load is applied by something you didn't model, at a known point: the tire contact patch loading an upright through the spindle, a shock force at the shock eye center, a rider pushing on a pedal. This is the single most useful load for suspension and chassis parts.</p>
+      <p><b>Example:</b> Baja upright. Model just the upright. Remote Force scoped to the spindle bore faces, Location at the tire contact patch (track and scrub radius offsets), components from your load case (e.g. 3g bump vertical + 1g cornering lateral). The upright sees the correct moments without modeling the hub, spindle, or wheel.</p>
+      <p><b>Behavior:</b> <i>Deformable</i> (default) lets the face warp naturally. <i>Rigid</i> keeps the face's shape, which over-stiffens it and can raise stresses around the face edge. Module 10 has the details.</p>
+      <p><b>Check:</b> after solving, a reaction probe on your supports should show the correct moment too, not just the force.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-moment">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="mm" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs><rect x="20" y="45" width="110" height="40" class="svg-part"/><rect x="128" y="45" width="4" height="40" fill="var(--bad)"/><path d="M150 40 A28 28 0 1 1 150 92" fill="none" stroke="var(--bad)" stroke-width="2.5" marker-end="url(#mm)"/><text x="10" y="120" font-size="10" class="svg-muted">torque about an axis</text></svg></div>
+      <div class="card-body">
+        <h4>Moment</h4>
+        <div class="where">Environment › Loads › Moment · scope: face / edge / vertex</div>
+        <p>A pure moment (torque) applied to the selected geometry, about an axis you define by vector or components. Internally it's a remote load, so it also has a location and Rigid/Deformable behavior. Right-hand rule for direction.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">N·mm</span><span class="pill">right-hand rule</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> shaft torque (a CVT shaft, a half-shaft spline end), a bending moment from a member you cut off.</p>
+      <p><b>Torsion example:</b> Fixed Support on one end of a shaft, Moment about the shaft axis on the other end face. Check against τ = T r / J.</p>
+      <p><b>Gotcha:</b> units. Mechanical shows N·mm in the mm unit system; 100 N·m = 100,000 N·mm.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-bearing">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="mb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs><rect x="20" y="25" width="140" height="80" rx="8" class="svg-part"/><circle cx="90" cy="65" r="25" fill="var(--bg)" stroke="var(--line)"/><path d="M65 65 A25 25 0 0 0 115 65" fill="none" stroke="var(--bad)" stroke-width="4"/><g stroke="var(--bad)" stroke-width="1.6"><line x1="90" y1="62" x2="90" y2="86" marker-end="url(#mb)"/><line x1="76" y1="65" x2="72" y2="78" marker-end="url(#mb)"/><line x1="104" y1="65" x2="108" y2="78" marker-end="url(#mb)"/></g><text x="10" y="122" font-size="10" class="svg-muted">only the loaded half</text></svg></div>
+      <div class="card-body">
+        <h4>Bearing Load</h4>
+        <div class="where">Environment › Loads › Bearing Load · scope: one cylindrical face (or set of faces of one cylinder)</div>
+        <p>Simulates a pin or shaft pushing on a hole. The radial load is applied only on the <b>compressive half</b> of the hole, with a distribution that peaks in line with the load and falls to zero at 90°. Much closer to reality than a Force on the hole.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">radial only</span><span class="pill">holes, bushings</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> clevis holes, rod-end mounts, bearing bores, any pin-loaded lug where you don't want to model the pin and contact.</p>
+      <p><b>Gotchas:</b> intended for <b>radial</b> load. If the pin also pushes axially, apply that as a separate Force. Scope only one cylinder per Bearing Load (two holes = two loads). Supports and the load can't share the exact same face.</p>
+      <p><b>Accuracy:</b> it assumes a pin with zero clearance. With real clearance the contact arc is narrower and peak stress is higher. For a critical lug, model the pin with frictionless contact and compare.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-bolt">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><rect x="30" y="40" width="120" height="22" class="svg-part"/><rect x="30" y="62" width="120" height="22" class="svg-part"/><rect x="80" y="30" width="20" height="65" fill="var(--panel)" stroke="var(--text)"/><rect x="70" y="22" width="40" height="10" fill="var(--panel)" stroke="var(--text)"/><rect x="70" y="93" width="40" height="10" fill="var(--panel)" stroke="var(--text)"/><line x1="76" y1="62" x2="104" y2="62" stroke="var(--bad)" stroke-width="3"/><text x="112" y="58" font-size="10" fill="var(--bad)">cut</text><text x="10" y="122" font-size="10" class="svg-muted">step 1 Load, step 2 Lock</text></svg></div>
+      <div class="card-body">
+        <h4>Bolt Pretension</h4>
+        <div class="where">Environment › Loads › Bolt Pretension · scope: bolt shank cylindrical face, bolt body, or a beam connection</div>
+        <p>Mechanical slices the bolt with a plane and pulls the two halves together until the bolt carries the preload you specified. The clamped parts get squeezed, exactly like tightening a nut.</p>
+        <div class="pills"><span class="pill nl">usually nonlinear (w/ contact)</span><span class="pill">needs 2 steps</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use when</b> the bolted joint itself is what you're checking: does it slip, does it gap, what's the bolt stress?</p>
+      <p><b>Define By</b> per step (in the Tabular Data table):</p>
+      <ul>
+        <li><b>Load</b>: apply this preload (N).</li>
+        <li><b>Adjustment</b>: shorten the bolt by this much (mm).</li>
+        <li><b>Lock</b>: freeze the bolt length where it ended up. External loads then add to bolt stress realistically.</li>
+        <li><b>Open</b>: no pretension.</li>
+      </ul>
+      <p><b>Standard setup:</b> Analysis Settings → 2 steps. Bolt Pretension step 1 = Load, step 2 = Lock. External loads 0 in step 1, full in step 2. Frictional contact under the head/nut and between the plates; bonded (or shared topology) between nut and bolt if modeled.</p>
+      <p><b>Picking preload:</b> F ≈ T / (K d), with T torque, d nominal diameter, K ≈ 0.2 (dry steel). M8 at 25 N·m → 25,000 / (0.2 × 8) ≈ 15,600 N.</p>
+      <p><b>Results:</b> Bolt Tool under Solution → Adjustment and Working Load, so you can see the bolt force in each step.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-line">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="ml" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs><path d="M25 55 L135 55 L160 75 L50 75 Z" class="svg-part"/><path d="M50 75 L160 75 L160 95 L50 95 Z" class="svg-part"/><line x1="25" y1="55" x2="135" y2="55" stroke="var(--bad)" stroke-width="3"/><g stroke="var(--bad)" stroke-width="1.5"><line x1="35" y1="28" x2="35" y2="50" marker-end="url(#ml)"/><line x1="60" y1="28" x2="60" y2="50" marker-end="url(#ml)"/><line x1="85" y1="28" x2="85" y2="50" marker-end="url(#ml)"/><line x1="110" y1="28" x2="110" y2="50" marker-end="url(#ml)"/></g><text x="10" y="120" font-size="10" class="svg-muted">force per length on an edge</text></svg></div>
+      <div class="card-body">
+        <h4>Line Pressure</h4>
+        <div class="where">Environment › Loads › Line Pressure · scope: edges</div>
+        <p>Force per unit length (N/mm) along an edge. Defined by vector, components, or tangential.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">N/mm</span><span class="pill">edge singularity on solids</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> loads on shell edges or line bodies (distributed load on a beam model of a frame member), or a knife-edge load.</p>
+      <p><b>Gotcha:</b> on a solid, an edge has zero area, so stress right along the edge is singular. Fine on shells and beams.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-hydro">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="mh" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs><path d="M30 20 L30 105 L150 105 L150 20" fill="none" stroke="var(--text)" stroke-width="4"/><rect x="33" y="40" width="114" height="62" fill="#3fa9f5" opacity=".3"/><g stroke="var(--bad)" stroke-width="1.5"><line x1="140" y1="50" x2="146" y2="50" marker-end="url(#mh)"/><line x1="130" y1="70" x2="146" y2="70" marker-end="url(#mh)"/><line x1="118" y1="92" x2="146" y2="92" marker-end="url(#mh)"/></g><text x="10" y="122" font-size="10" class="svg-muted">grows with depth (ρgh)</text></svg></div>
+      <div class="card-body">
+        <h4>Hydrostatic Pressure</h4>
+        <div class="where">Environment › Loads › Hydrostatic Pressure · scope: faces</div>
+        <p>Pressure that increases linearly with depth: p = ρ g h. You give fluid density, the gravity/acceleration direction, and the location of the free surface.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">tanks, hulls, ROVs</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> water tanks, dams, and underwater housings: e.g. an ROV or profiling float pressure hull at depth. For a submerged housing deep underwater, depth variation across the part is tiny compared with total depth, so plain uniform Pressure (ρ g h at the operating depth) is basically the same thing.</p>
+      <p><b>Gotcha:</b> the free surface location is in the coordinate system you pick; get it wrong and pressure is negative on half the part.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-accel">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="ma" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker><marker id="mg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs><rect x="55" y="40" width="70" height="45" class="svg-part"/><line x1="35" y1="85" x2="35" y2="35" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ma)"/><text x="5" y="28" font-size="10" fill="var(--accent)">Accel +Y</text><line x1="145" y1="35" x2="145" y2="85" stroke="var(--bad)" stroke-width="2.5" marker-end="url(#mg)"/><text x="120" y="102" font-size="10" fill="var(--bad)">Gravity −Y</text><text x="5" y="122" font-size="10" class="svg-muted">same effect, opposite arrows</text></svg></div>
+      <div class="card-body">
+        <h4>Acceleration &amp; Standard Earth Gravity</h4>
+        <div class="where">Environment › Inertial › Acceleration / Standard Earth Gravity · scope: whole model</div>
+        <p>Body loads: every bit of mass feels a force, so you need <b>density</b>. <b>Standard Earth Gravity</b> is 9806.6 mm/s² in the direction gravity <i>pulls</i> (pick −Y, etc). <b>Acceleration</b> is a general acceleration with a sign convention that trips everyone up.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">needs density</span><span class="pill">watch the sign</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>The sign convention:</b> Acceleration means the <i>supports</i> are accelerating the part in that direction, so the part's inertia resists in the opposite direction. To mimic gravity pulling down (−Y), you apply Acceleration = <b>+9806.6 mm/s² in +Y</b>. Standard Earth Gravity skips this confusion: arrow points the way gravity pulls.</p>
+      <p><b>Use for</b> self-weight of big parts, and g-load cases: a battery box or engine mount under a 5g vertical bump, a component under 1.5g braking. Fix the mounting points and apply the acceleration of the vehicle; the part's own mass loads itself.</p>
+      <p><b>Gotcha:</b> point masses. If a heavy component isn't modeled (an engine on a mount), add it as a <b>Point Mass</b> (right-click Geometry → Insert → Point Mass) at its CG, scoped to the mount faces, so its inertia is included.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-rot">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="mo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs><circle cx="90" cy="62" r="42" class="svg-part"/><circle cx="90" cy="62" r="8" fill="var(--bg)" stroke="var(--text)"/><path d="M40 30 A60 60 0 0 1 140 30" fill="none" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#mo)"/><text x="5" y="122" font-size="10" class="svg-muted">centrifugal load ∝ ω²r</text></svg></div>
+      <div class="card-body">
+        <h4>Rotational Velocity</h4>
+        <div class="where">Environment › Inertial › Rotational Velocity · scope: whole model or bodies</div>
+        <p>Spins the part about an axis you define. Each mass element feels centrifugal force m ω² r outward. Needs density.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">rad/s or RPM</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> CVT sheaves, brake rotors, flywheels, fans, anything spinning fast. Check hoop stress in a thin ring: σ ≈ ρ ω² r².</p>
+      <p><b>Gotcha:</b> it's not a torque. It only creates centrifugal load. Torque transmission is a separate Moment. There's also Rotational Acceleration (spin-up) which creates tangential inertial load.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-thermal">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><rect x="30" y="45" width="100" height="40" class="svg-part"/><rect x="30" y="45" width="118" height="40" fill="none" stroke="var(--bad)" stroke-dasharray="4 3"/><g stroke="var(--text)"><line x1="30" y1="40" x2="30" y2="90"/><line x1="30" y1="45" x2="20" y2="55"/><line x1="30" y1="60" x2="20" y2="70"/><line x1="30" y1="75" x2="20" y2="85"/></g><text x="125" y="40" font-size="11" fill="var(--bad)">αΔTL</text><text x="5" y="122" font-size="10" class="svg-muted">ΔT → strain → stress if held</text></svg></div>
+      <div class="card-body">
+        <h4>Thermal Condition</h4>
+        <div class="where">Environment › Conditions › Thermal Condition · scope: bodies</div>
+        <p>Sets a uniform temperature on bodies. Compared with the environment's <b>reference temperature</b> (22 °C by default, set on the Static Structural branch), each body grows by α ΔT. Free expansion makes no stress; restrained expansion makes a lot.</p>
+        <div class="pills"><span class="pill">linear</span><span class="pill">needs CTE</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> quick checks: aluminum part bolted to steel heated 80 °C. For non-uniform temperatures (a brake rotor, an exhaust bracket) solve a <b>Steady-State Thermal</b> first and link it (Module 13).</p>
+      <p><b>Hand check:</b> fully restrained bar: σ = E α ΔT. Steel, ΔT = 100 °C: 200,000 × 12e-6 × 100 = 240 MPa. Over-constraining a thermal model produces exactly this kind of huge fake stress.</p>
+    </div></details>
+  </div>
+
+  <div class="card" id="load-joint">
+    <div class="card-top">
+      <div class="card-fig"><svg viewBox="0 0 180 130"><defs><marker id="mj" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs><rect x="15" y="55" width="65" height="20" class="svg-part"/><rect x="95" y="35" width="20" height="65" class="svg-part" transform="rotate(30 105 65)"/><circle cx="88" cy="65" r="8" fill="var(--bg)" stroke="var(--accent-2)" stroke-width="3"/><path d="M70 40 A26 26 0 0 1 112 42" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#mj)"/><text x="5" y="122" font-size="10" class="svg-muted">drive a joint DOF</text></svg></div>
+      <div class="card-body">
+        <h4>Joint Load</h4>
+        <div class="where">Environment › Conditions › Joint Load · scope: a joint</div>
+        <p>Drives a joint's free DOF with a force, moment, displacement, rotation (or velocity in transient). E.g. rotate a revolute joint 15° to swing a control arm through its travel.</p>
+        <div class="pills"><span class="pill">mostly with Large Deflection</span><span class="pill">kinematics</span></div>
+      </div>
+    </div>
+    <details><summary>When to use, gotchas, real examples</summary><div class="more">
+      <p><b>Use for</b> mechanisms: checking for interference or loads through a linkage as it moves. Rotations beyond a few degrees need Large Deflection On, which makes it <span class="pill nl">nonlinear</span>.</p>
+    </div></details>
+  </div>
+  </div>
+
+  <h3>Loads that are actually imported</h3>
+  <p>When systems are linked (Module 01/13), you get an <b>Imported Load</b> folder: imported body temperature from a thermal run, imported pressure from Fluent. You right-click → <i>Import Load</i> to refresh. Same idea as a Thermal Condition, but varying per node.</p>
+</section>
+
+<!-- ============================================================ 10 -->
+<section class="module" id="mod-remote" data-title="Remote points & load transfer" data-group="Boundary conditions">
+  <div class="module-head"><div class="tag">MODULE 10</div><h2>Remote points, Rigid vs Deformable, and Saint-Venant</h2><p>How a load gets from "a point" onto "a face" decides your local stresses. Here's how to control it.</p></div>
+
+  <p>Remote Force, Remote Displacement, Moment, Point Mass, Springs and Joints all use a <b>remote point</b>: a single node off in space (or at a location you choose) tied to the selected face by constraint equations. You can create one explicitly (right-click <i>Model</i> → Insert → <b>Remote Point</b>) and reuse it: scope a Remote Force and a joint to the same point, for instance.</p>
+
+  <h3>The Behavior setting</h3>
+  <figure>
+    <svg viewBox="0 0 760 210" role="img" aria-label="Rigid vs deformable behavior">
+      <defs><marker id="rr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker></defs>
+      <g class="svg-text" font-size="13">
+        <g transform="translate(20,10)">
+          <text x="0" y="16" font-weight="700">Rigid</text>
+          <rect x="0" y="40" width="190" height="90" class="svg-part"/>
+          <line x1="190" y1="40" x2="190" y2="130" stroke="var(--bad)" stroke-width="4"/>
+          <circle cx="300" cy="85" r="6" fill="var(--bad)"/>
+          <g stroke="var(--bad)" stroke-width="2"><line x1="190" y1="40" x2="300" y2="85"/><line x1="190" y1="62" x2="300" y2="85"/><line x1="190" y1="85" x2="300" y2="85"/><line x1="190" y1="108" x2="300" y2="85"/><line x1="190" y1="130" x2="300" y2="85"/></g>
+          <line x1="300" y1="85" x2="300" y2="140" stroke="var(--bad)" stroke-width="3" marker-end="url(#rr)"/>
+          <text x="0" y="160" font-size="12" class="svg-muted">Face welded to stiff spokes.</text>
+          <text x="0" y="178" font-size="12" class="svg-muted">Face stays flat. Adds stiffness.</text>
+          <text x="0" y="196" font-size="12" class="svg-muted">Can spike stress at face edges.</text>
+        </g>
+        <g transform="translate(400,10)">
+          <text x="0" y="16" font-weight="700">Deformable</text>
+          <rect x="0" y="40" width="190" height="90" class="svg-part"/>
+          <path d="M190 40 Q200 85 190 130" fill="none" stroke="var(--bad)" stroke-width="4"/>
+          <circle cx="300" cy="85" r="6" fill="var(--bad)"/>
+          <g stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="4 3"><line x1="190" y1="40" x2="300" y2="85"/><line x1="195" y1="62" x2="300" y2="85"/><line x1="197" y1="85" x2="300" y2="85"/><line x1="195" y1="108" x2="300" y2="85"/><line x1="190" y1="130" x2="300" y2="85"/></g>
+          <line x1="300" y1="85" x2="300" y2="140" stroke="var(--bad)" stroke-width="3" marker-end="url(#rr)"/>
+          <text x="0" y="160" font-size="12" class="svg-muted">Face connected by "soft" averaging.</text>
+          <text x="0" y="178" font-size="12" class="svg-muted">Face can warp. No added stiffness.</text>
+          <text x="0" y="196" font-size="12" class="svg-muted">Usually the more honest choice.</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>Rigid uses MPC constraint equations (like RBE2 in Nastran); Deformable distributes load by weighted averaging (like RBE3).</figcaption>
+  </figure>
+  <div class="table-wrap"><table>
+    <tr><th>Behavior</th><th>Face can deform?</th><th>Use when</th></tr>
+    <tr><td><b>Rigid</b></td><td class="y">No</td><td>The real mating part is much stiffer than this face: a steel spindle pressed into a bore, a thick hub flange. Also when you need moments transferred into a small face robustly.</td></tr>
+    <tr><td><b>Deformable</b></td><td class="n">Yes</td><td>The mating part is similar stiffness or flexible, or you don't know. Default for most remote loads.</td></tr>
+    <tr><td><b>Coupled</b></td><td>Partially</td><td>All nodes get the same displacement in the coupled DOF. Niche; for things like a face that must stay a constant distance in one direction.</td></tr>
+  </table></div>
+
+  <h3>Pinball region on remote points</h3>
+  <p>A remote point only connects to nodes on the scoped face within its <b>Pinball Region</b> (All by default). Limit it if you only want part of a face to participate.</p>
+
+  <h3>Saint-Venant's principle: why this all mostly works</h3>
+  <p>The way a load is applied changes stress <b>locally</b>, but a few "characteristic dimensions" away (roughly the size of the loaded area or the part's thickness) the stress only depends on the <b>resultant</b> force and moment. So:</p>
+  <ul>
+    <li>Fixed vs Cylindrical vs modeled bolt only matters <b>near</b> the hole.</li>
+    <li>Rigid vs Deformable only matters <b>near</b> the scoped face.</li>
+    <li>If your critical stress is far from all supports and loads, your simplifications are probably OK.</li>
+    <li>If your critical stress is <b>at</b> a support or load face, you must model that interface realistically (contact, real pin, bolt).</li>
+  </ul>
+  <div class="callout good"><b class="t">The habit to build</b>Before trusting a peak stress, ask: "is this peak sitting right on a support or load?" If yes, it's probably an artifact of how you applied the BC. Move the BC further away (add more of the mating structure), or model the interface properly, and see if the peak survives.</div>
+
+  <h3>Scoping tips that save hours</h3>
+  <ul>
+    <li><b>Split faces in CAD</b> to make load patches (SpaceClaim: <span class="path">Design › Split</span>, or sketch on a face and Pull with "imprint"). A 20 mm wide patch is much more realistic than an edge or vertex.</li>
+    <li><b>Named Selections by worksheet</b>: right-click Named Selections → Insert → Named Selection, set Scoping Method to <i>Worksheet</i> to grab e.g. "all cylindrical faces with radius = 4 mm" (every M8 bolt hole) in one rule.</li>
+    <li><b>Show the load</b>: click a load and the graphics show its arrows and scoped faces. Always look once before solving.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 11 -->
+<section class="module" id="mod-results" data-title="Results & post-processing" data-group="Results">
+  <div class="module-head"><div class="tag">MODULE 11</div><h2>Results &amp; post-processing</h2><p>Insert the right result, read it the right way, and look at the deformed shape before anything else.</p></div>
+
+  <p>Results go under <b>Solution</b>. Insert from the Solution context tab, or right-click Solution → Insert. After adding results, right-click → <b>Evaluate All Results</b> (no re-solve needed).</p>
+
+  <h3>The results you'll use 95% of the time</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Result</th><th>What it is</th><th>Use it for</th></tr>
+    <tr><td><b>Total Deformation</b></td><td>Magnitude of displacement √(ux²+uy²+uz²)</td><td>First sanity check. Does it move the way you'd expect?</td></tr>
+    <tr><td><b>Directional Deformation</b></td><td>Displacement in X, Y, or Z (any CS)</td><td>Deflection of a specific feature, stiffness calc</td></tr>
+    <tr><td><b>Equivalent (von-Mises) Stress</b></td><td>Single positive number combining all stress components</td><td>Yield check for ductile metals (steel, aluminum, Ti)</td></tr>
+    <tr><td><b>Maximum Principal Stress</b></td><td>Largest normal stress (sign matters: + tension)</td><td>Brittle materials, cast parts, fatigue, cracks open in tension</td></tr>
+    <tr><td><b>Minimum Principal Stress</b></td><td>Most compressive normal stress</td><td>Bearing/crushing, compression-side checks</td></tr>
+    <tr><td><b>Normal / Shear Stress</b></td><td>One component (σx, τxy, …) in a chosen CS</td><td>Matching a hand calc (σ = Mc/I, τ = Tr/J)</td></tr>
+    <tr><td><b>Stress Tool</b></td><td>Safety Factor / Safety Margin vs yield or ultimate</td><td>A plot of FoS with min value. Needs yield in Engineering Data.</td></tr>
+    <tr><td><b>Force / Moment Reaction</b> (probe)</td><td>Reaction at a support, contact, or joint</td><td>Load path check, sizing bolts and welds</td></tr>
+  </table></div>
+
+  <h3>Look at deformation first, at true scale</h3>
+  <p>By default Mechanical exaggerates displacement so you can see the shape (the scale dropdown in the Result ribbon, often something like "1.2e+02 (Auto Scale)"). That's good for seeing the shape, and terrible for judging magnitude. Switch to <b>1.0 (True Scale)</b> once to see whether your part actually moves visibly. If something moves 30 mm at true scale and it's a steel bracket, something's wrong (units, material, or constraint).</p>
+  <ul>
+    <li>Does it bend the way the load pushes?</li>
+    <li>Do supported faces stay put?</li>
+    <li>Is any part flying off or sliding through another (an unconnected body)?</li>
+    <li>Are deflections roughly the size you'd guess?</li>
+  </ul>
+
+  <h3>Probes and reactions</h3>
+  <p>Right-click Solution → Insert → <b>Probe › Force Reaction</b>. Set <b>Location Method</b> to <i>Boundary Condition</i> and pick your Fixed Support (or a contact region, or a remote displacement). You get X, Y, Z and total reaction. <b>Sum of reactions must equal sum of applied loads</b> (with opposite sign). This is the cheapest correctness check there is.</p>
+  <p>Other probes: <b>Moment Reaction</b> (moment about a point at the support), <b>Joint Probe</b> (forces through a joint), <b>Bolt Pretension probe</b>, <b>Beam probe</b> (axial force/moment in a beam connection), <b>Spring probe</b>. You can also just click the <b>Probe</b> button in the result toolbar and click on the model to read the value at a point.</p>
+
+  <h3>Scoping results</h3>
+  <p>A result scoped to the whole model shows the global max, which is often at a singularity you don't care about (Module 12). Scope stress results to the body or faces you're checking: in Details, set Geometry to just those faces. Or right-click a result → <b>Create Results on Selected</b>.</p>
+
+  <h3>Display options worth knowing</h3>
+  <ul>
+    <li><b>Max/Min labels</b>: toolbar buttons to show where the max and min are.</li>
+    <li><b>Section Planes</b>: slice the model to see internal stresses (toolbar → New Section Plane, drag a line across the screen).</li>
+    <li><b>Contours</b>: Smooth vs Banded vs Isolines. Change the number of bands, or click a value on the legend to set a custom range (great for "show me everything above 200 MPa").</li>
+    <li><b>Show Elements</b>: overlay the mesh on the result to see if the peak is sitting on one sad element.</li>
+    <li><b>Path results</b>: Model → Construction Geometry → Path (two points). Then a stress result scoped to the path plots stress vs distance. <b>Linearized Stress</b> along a through-thickness path splits membrane vs bending (pressure vessel codes use this).</li>
+    <li><b>Averaged vs Unaveraged</b> (result Details → Display Option): explained in Module 12.</li>
+    <li><b>Animation</b>: play button in the Graph window. Animated mode shapes are the best way to understand modal results.</li>
+  </ul>
+
+  <h3>Which stress do I compare to what?</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Material / question</th><th>Read</th><th>Compare to</th></tr>
+    <tr><td>Ductile metal, static strength</td><td>Equivalent (von Mises)</td><td>Yield strength (with a factor of safety, e.g. 1.5–2 for student vehicles)</td></tr>
+    <tr><td>Brittle (cast iron, ceramic, glass, many 3D prints)</td><td>Max Principal</td><td>Ultimate tensile strength</td></tr>
+    <tr><td>Fatigue (repeated loading)</td><td>Max Principal (range) or Fatigue Tool</td><td>Endurance / S-N curve, much lower than yield</td></tr>
+    <tr><td>Welded joint</td><td>Stress a small distance from the toe, or weld-specific methods</td><td>Weld/HAZ allowables, not parent material</td></tr>
+    <tr><td>Bolt</td><td>Reaction/bolt probe forces</td><td>Bolt proof load, slip (μ × clamp)</td></tr>
+  </table></div>
+</section>
+
+<!-- ============================================================ 12 -->
+<section class="module" id="mod-trust" data-title="Can I trust it?" data-group="Results">
+  <div class="module-head"><div class="tag">MODULE 12</div><h2>Can I trust it? Singularities, convergence, verification</h2><p>This module is the difference between "I ran FEA" and "I know the part is safe."</p></div>
+
+  <h3>Stress singularities: the infinite-stress trap</h3>
+  <p>Some spots have theoretically <b>infinite</b> stress in linear elasticity. The FEA value there isn't a real number; it's whatever your mesh size happens to make it. Refine the mesh and it keeps climbing forever. Common causes:</p>
+  <ul>
+    <li><b>Sharp re-entrant corners</b> (inside corner with zero fillet radius). Real parts always have some radius.</li>
+    <li><b>Point and edge loads/supports</b> on solids (finite force, zero area).</li>
+    <li><b>Edges of Fixed Supports</b> (the sudden switch from "can't move" to "free").</li>
+    <li><b>Edges of bonded contact</b> between different-stiffness bodies.</li>
+  </ul>
+  <p>A <b>stress concentration</b> is different: a hole or a real fillet has a high but <b>finite</b> peak (Kt × nominal). Refine the mesh and it converges to a value. That value is real and you must design for it.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 280" role="img" aria-label="Singularity vs concentration convergence">
+      <g class="svg-text" font-size="12">
+        <line x1="70" y1="230" x2="660" y2="230" stroke="var(--muted)"/>
+        <line x1="70" y1="230" x2="70" y2="20" stroke="var(--muted)"/>
+        <text x="300" y="265" class="svg-muted">mesh refinement (elements at the spot) →</text>
+        <text x="16" y="130" class="svg-muted" transform="rotate(-90 26 130)">peak stress</text>
+        <polyline points="100,190 200,160 300,128 400,96 500,62 600,30" fill="none" stroke="var(--bad)" stroke-width="3"/>
+        <g fill="var(--bad)"><circle cx="100" cy="190" r="4"/><circle cx="200" cy="160" r="4"/><circle cx="300" cy="128" r="4"/><circle cx="400" cy="96" r="4"/><circle cx="500" cy="62" r="4"/><circle cx="600" cy="30" r="4"/></g>
+        <text x="455" y="22" fill="var(--bad)">singularity: never settles</text>
+        <polyline points="100,200 200,150 300,128 400,120 500,117 600,116" fill="none" stroke="var(--good)" stroke-width="3"/>
+        <g fill="var(--good)"><circle cx="100" cy="200" r="4"/><circle cx="200" cy="150" r="4"/><circle cx="300" cy="128" r="4"/><circle cx="400" cy="120" r="4"/><circle cx="500" cy="117" r="4"/><circle cx="600" cy="116" r="4"/></g>
+        <text x="455" y="142" fill="var(--good)">real concentration: converges</text>
+        <line x1="70" y1="116" x2="660" y2="116" stroke="var(--good)" stroke-dasharray="4 4" opacity=".5"/>
+      </g>
+    </svg>
+    <figcaption>Illustrative shape of a mesh convergence study. A real fillet converges to a value; a sharp corner or point load diverges.</figcaption>
+  </figure>
+
+  <h4>What to do about a singularity</h4>
+  <ul>
+    <li>If it's not where you care (the corner of a fixed support), <b>ignore it</b>: scope your stress result away from it, or read stress a short distance away (Saint-Venant).</li>
+    <li>If it's where you care (an inside corner at the critical section), <b>add the real fillet radius</b> to the geometry. Then it becomes a finite, convergeable concentration.</li>
+    <li>If it's at a load/support, make the BC realistic (patch instead of point, model the pin).</li>
+  </ul>
+
+  <h3>Mesh convergence study (do this every time it matters)</h3>
+  <ol class="steps">
+    <li>Make a Named Selection of the critical face (e.g. the fillet).</li>
+    <li>Add a face <b>Sizing</b> on it. Solve with a coarse size. Record the peak stress scoped to that face.</li>
+    <li>Halve the size. Solve. Record. Repeat 3–4 times.</li>
+    <li>Plot peak stress vs element count (or 1/size). When the last two runs differ by less than ~5% (your call based on stakes), it's converged.</li>
+    <li>If it never settles, you're at a singularity. See above.</li>
+  </ol>
+  <p><b>Automatic way:</b> right-click a stress result → Insert → <b>Convergence</b>. Set Allowable Change (e.g. 5%), and in Solution Details set <b>Max Refinement Loops</b> to 3–5. Mechanical will refine the mesh where needed and re-solve until the result stops changing. Scope the result first, or it will chase the singularity forever.</p>
+  <p>You can also turn on <b>Parameter</b> on the sizing and the peak stress and let Design Points run the study for you (Module 01).</p>
+
+  <h3>Averaged vs unaveraged stress</h3>
+  <p>Each element calculates its own stress at each node. Neighboring elements disagree at shared nodes; the default plot <b>averages</b> them, which looks smooth. Set Display Option to <b>Unaveraged</b> and you see the raw disagreement. Big jumps between neighbors = mesh too coarse there. Also try <b>Structural Error</b> (Solution → Insert → Stress Tool / Error): it highlights elements with the highest energy error, i.e. where to refine.</p>
+
+  <h3>The verification checklist</h3>
+  <div class="table-wrap"><table>
+    <tr><th>#</th><th>Check</th><th>How</th></tr>
+    <tr><td>1</td><td>Units are what you think</td><td>Look at the units shown next to loads and results</td></tr>
+    <tr><td>2</td><td>Every body has the right material</td><td>Click each body under Geometry</td></tr>
+    <tr><td>3</td><td>Contacts are what you intend</td><td>Contact Tool initial status, no unintended bonded pairs</td></tr>
+    <tr><td>4</td><td>Reactions = applied loads</td><td>Force Reaction probes</td></tr>
+    <tr><td>5</td><td>Deformed shape is physical</td><td>True scale + exaggerated, animate</td></tr>
+    <tr><td>6</td><td>Peak isn't a singularity or BC artifact</td><td>Where is the max? Refine and see if it moves</td></tr>
+    <tr><td>7</td><td>Mesh converged at the critical spot</td><td>Convergence study, &lt; ~5% change</td></tr>
+    <tr><td>8</td><td>Linear assumptions still valid</td><td>Stress below yield? Deflection small? Contacts not separating?</td></tr>
+    <tr><td>9</td><td>Hand calc in the same ballpark</td><td>Beam, plate, or Kt formula on a simplified version</td></tr>
+    <tr><td>10</td><td>Solver warnings read</td><td>Solution Information + Messages window</td></tr>
+  </table></div>
+  <div class="callout warn"><b class="t">Yielding in a linear model</b>If a linear run shows 350 MPa in 6061 (yield 276), the real part yields and redistributes stress, so the real peak is lower than 350 but the part is permanently bent. A linear answer above yield means "this fails the yield check", not "the stress is 350 MPa". If a small area just barely yields (like a sharp notch), a plasticity run can tell you if that's acceptable.</div>
+</section>
+
+<!-- ============================================================ 13 -->
+<section class="module" id="mod-other" data-title="Modal, buckling, thermal" data-group="Results">
+  <div class="module-head"><div class="tag">MODULE 13</div><h2>Other analysis types: modal, buckling, thermal</h2><p>Same Mechanical, different question. The supports chapter applies to all of them.</p></div>
+
+  <h3>Modal (natural frequencies)</h3>
+  <p>Drag <b>Modal</b> onto the schematic (or onto the Model cell of your static system to share geometry and mesh). No loads, just supports. Set <b>Max Modes to Find</b> in Analysis Settings (default 6). Solve, then the Tabular Data shows each mode's frequency; right-click → <i>Create Mode Shape Results</i>.</p>
+  <ul>
+    <li><b>Mode shape magnitudes are meaningless.</b> They're normalized. Only the shape and frequency matter.</li>
+    <li><b>Needs density.</b> No density, no mass, no modes.</li>
+    <li>A mode at <b>~0 Hz</b> means a rigid body motion: missing support or a disconnected part. Great debugging tool for static models too.</li>
+    <li><b>Why you care:</b> if an excitation (engine firing frequency, tire imbalance, CVT) is near a natural frequency, you get resonance. Keep natural frequencies away from excitation (often a target like "first mode above X Hz").</li>
+    <li>Supports change frequencies a lot. A fixed vs bolted-on-rubber mount can halve the first mode.</li>
+  </ul>
+
+  <h3>Eigenvalue Buckling</h3>
+  <p>Slender members in compression fail by buckling long before yield. Setup: a Static Structural with your supports and a load (often 1 N or the real load), then drag <b>Eigenvalue Buckling</b> onto the static system's <b>Solution</b> cell. Solve. The result is a <b>Load Multiplier</b> for each buckling mode:</p>
+  <div class="math">Critical load = Load Multiplier × applied load
+(apply 1 N → multiplier = critical load in N)</div>
+  <div class="callout warn"><b class="t">Not conservative</b>Linear buckling assumes a perfect structure. Real ones have imperfections and residual stresses, so they buckle earlier, sometimes much earlier for thin shells. Apply a knockdown factor (or do a nonlinear buckling run with an imperfection seeded from the mode shape). Also check the mode: if the first mode is a local wrinkle of a thin wall instead of the global column bowing, that's the one that'll happen.</div>
+
+  <h3>Steady-State Thermal</h3>
+  <p>Solves for temperature, not displacement. Different "supports and loads":</p>
+  <div class="table-wrap"><table>
+    <tr><th>Thermal BC</th><th>Analogy in structural</th><th>Example</th></tr>
+    <tr><td>Temperature</td><td>Displacement (fixed value)</td><td>Face held at 90 °C by a coolant jacket</td></tr>
+    <tr><td>Heat Flow / Heat Flux</td><td>Force / Pressure</td><td>Brake friction heat into a rotor face, electronics dissipating 5 W</td></tr>
+    <tr><td>Internal Heat Generation</td><td>Body force</td><td>Resistive heating in a conductor</td></tr>
+    <tr><td>Convection</td><td>Elastic Support (spring to ambient)</td><td>Air cooling: film coefficient h (W/m²·K) and ambient temperature</td></tr>
+    <tr><td>Radiation</td><td>(nonlinear spring)</td><td>Exhaust parts</td></tr>
+    <tr><td>Perfectly Insulated</td><td>Free face</td><td>Default on any face without a BC</td></tr>
+  </table></div>
+  <p>Needs <b>Thermal Conductivity</b>. Results: Temperature, Total Heat Flux, and a Reaction probe for heat flow. Typical h values: still air ~5–10 W/m²K, moving air 10–100, water much higher.</p>
+
+  <h3>Thermal stress (one-way coupled)</h3>
+  <ol class="steps">
+    <li>Solve the Steady-State Thermal.</li>
+    <li>Drag a Static Structural onto the Thermal's <b>Solution</b> cell (geometry/model are shared too).</li>
+    <li>In Mechanical, the structural branch gets <b>Imported Load → Imported Body Temperature</b>. Right-click → Import Load.</li>
+    <li>Add supports (carefully, don't over-constrain thermal growth) and any mechanical loads. Solve.</li>
+  </ol>
+
+  <h3>Brief: other systems you'll meet</h3>
+  <ul>
+    <li><b>Transient Structural</b>: loads vary quickly enough that inertia matters (impacts, drops at low speed, shock events). Time-stepping, slower.</li>
+    <li><b>Harmonic Response</b>: steady sinusoidal loading at a sweep of frequencies (vibration shaker test).</li>
+    <li><b>Random Vibration / Response Spectrum</b>: PSD or shock spectrum inputs, linked from Modal.</li>
+    <li><b>Explicit Dynamics / LS-DYNA</b>: crashes, high-speed impacts, large distortion.</li>
+    <li><b>Structural Optimization (Topology)</b>: drag onto a Static Structural's Solution cell; tells you where material isn't needed. Great for brackets and uprights. Always validate the redesigned part with a fresh static run.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 14 -->
+<section class="module" id="mod-examples" data-title="Worked examples" data-group="Practice">
+  <div class="module-head"><div class="tag">MODULE 14</div><h2>Worked examples</h2><p>Each one has a hand calc so you know what the right answer is before you click Solve. Build them yourself; they take 10–20 minutes each.</p></div>
+
+  <!-- EX 1 -->
+  <div class="example">
+    <h3>Example 1: Cantilever beam (your first model)</h3>
+    <div class="spec">
+      <div><b>Geometry</b>25 × 25 mm square bar, L = 300 mm</div>
+      <div><b>Material</b>Al 6061-T6, E = 68.9 GPa, ρ = 2700 kg/m³</div>
+      <div><b>Support</b>Fixed Support, one end face</div>
+      <div><b>Load</b>Force 500 N, −Y, other end face</div>
+    </div>
+    <h4>Hand calc first</h4>
+    <div class="math">I  = b⁴/12 = 25⁴/12 = 32,552 mm⁴
+δ  = F L³ / (3 E I) = 500 × 300³ / (3 × 68,900 × 32,552) = 2.01 mm
+M  = F L = 500 × 300 = 150,000 N·mm   (at the wall)
+σ  = M c / I = 150,000 × 12.5 / 32,552 = 57.6 MPa   (top/bottom at wall)
+σ at 25 mm from wall: M = 500 × 275 → σ = 52.8 MPa</div>
+    <h4>Build it</h4>
+    <ol class="steps">
+      <li>Toolbox → drag <b>Static Structural</b> onto the schematic.</li>
+      <li>Engineering Data: add a 6061-T6 material (Module 02).</li>
+      <li>Geometry → SpaceClaim: sketch a 25 mm square, Pull it 300 mm. Close SpaceClaim.</li>
+      <li>Open Mechanical (double-click Model). Assign 6061 to the body.</li>
+      <li>Mesh: body Sizing 5 mm (gives 5 quadratic elements through the depth). Generate.</li>
+      <li>Click <i>Static Structural</i>. Fixed Support → one end face. Force → other end face, Components, Y = −500 N.</li>
+      <li>Solution: insert Total Deformation, Directional Deformation (Y), Equivalent Stress, Normal Stress (X axis), Force Reaction probe on the Fixed Support.</li>
+      <li>Solve.</li>
+    </ol>
+    <h4>What you should see</h4>
+    <ul>
+      <li>Directional deformation at the tip ≈ <b>−2.0 mm</b>. Within ~1% of hand calc (shear deflection adds a hair).</li>
+      <li>Force reaction Y = <b>+500 N</b>. Load path confirmed.</li>
+      <li>Normal stress X at the top surface 25 mm from the wall ≈ <b>+52.8 MPa</b> (tension on top), and −52.8 on bottom.</li>
+      <li>The <b>max</b> Equivalent Stress will likely show up at the corners of the fixed face, higher than 57.6, and it grows if you refine the mesh there. That's the Fixed Support singularity from Module 12. The physics answer is the beam-theory value away from the wall.</li>
+    </ul>
+    <div class="reveal">
+      <p><b>Try it:</b> Change the material to Structural Steel without changing anything else. What happens to deflection and stress?</p>
+      <button class="btn">Show answer</button>
+      <div class="ans callout good"><b class="t">Answer</b>Deflection drops by the ratio of moduli, 68.9/200, to about 0.69 mm. Stress stays the same (≈57.6 MPa), because a statically determinate beam's stress depends only on geometry and load, not E. That's why a forgotten material assignment hides so well.</div>
+    </div>
+    <div class="reveal">
+      <p><b>Extend it:</b> Drag a Modal system onto this one's Model cell, keep the Fixed Support, and solve. What should the first frequency be?</p>
+      <button class="btn">Show answer</button>
+      <div class="ans callout good"><b class="t">Answer</b>f₁ = (1.875²/2π) √(EI / (m L⁴)), m = ρA = 2.7e-9 t/mm³ × 625 mm² = 1.69e-6 t/mm. → f₁ ≈ <b>227 Hz</b>. You'll get two modes very close to that (bending in Y and in Z, since the section is square), then a second bending pair around 6.27× higher, plus a torsion and axial mode.</div>
+    </div>
+  </div>
+
+  <!-- EX 2 -->
+  <div class="example">
+    <h3>Example 2: Plate with a hole, quarter symmetry, convergence study</h3>
+    <div class="spec">
+      <div><b>Geometry</b>Plate 100 wide × 300 long × 5 thick (mm), Ø20 hole at center</div>
+      <div><b>Material</b>Structural Steel</div>
+      <div><b>Load</b>10 kN tension along length</div>
+      <div><b>Goal</b>Peak stress at the hole</div>
+    </div>
+    <h4>Hand calc (Peterson)</h4>
+    <div class="math">σ_nom (net section) = P / ((W − d) t) = 10,000 / (80 × 5) = 25 MPa
+d/W = 0.2  →  Kt ≈ 3 − 3.14(0.2) + 3.667(0.2)² − 1.527(0.2)³ = 2.51
+σ_peak ≈ 2.51 × 25 = 62.7 MPa   (at the hole edge, 90° from load direction)</div>
+    <h4>Build it with symmetry</h4>
+    <ol class="steps">
+      <li>Model only one quarter: 50 wide × 150 long × 5 thick with a quarter-circle notch of R10 at the corner. (Or full plate, then Split Body twice.)</li>
+      <li><b>Frictionless Support</b> on the two cut faces (the symmetry planes). These stop normal motion and let in-plane sliding happen, exactly like the missing three quarters would.</li>
+      <li>Something must stop motion through the thickness (Z). Add a Displacement Z = 0 on one vertex, or (cleaner) also halve the thickness and put a third Frictionless Support on that cut.</li>
+      <li>Load on the far end face: <b>Pressure = −20 MPa</b> (negative = pulling). Check: gross area of quarter end face = 50 × 5 = 250 mm², 20 × 250 = 5,000 N. That's half of 10 kN, correct for a quarter model since the end face of the quarter is half the width.</li>
+      <li>Insert a Normal Stress (X along the load), scoped to the hole face. Solve at a few mesh sizes on the hole face: 4 mm, 2 mm, 1 mm, 0.5 mm.</li>
+    </ol>
+    <h4>What you should see</h4>
+    <p>Peak normal stress at the hole converges toward ~62–63 MPa as the hole mesh gets finer. Coarse meshes under-predict it noticeably. Reaction on each symmetry plane: the one perpendicular to the load carries 5,000 N; the other carries ~0. This is the textbook demonstration that <b>real stress concentrations converge</b> (unlike Example 1's fixed-corner singularity).</p>
+  </div>
+
+  <!-- EX 3 -->
+  <div class="example">
+    <h3>Example 3: Thin-wall pressure vessel</h3>
+    <div class="spec">
+      <div><b>Geometry</b>Tube, mean radius 50 mm, wall t = 2 mm</div>
+      <div><b>Load</b>Internal pressure p = 2 MPa, closed ends</div>
+      <div><b>Model</b>A short ring slice with symmetry</div>
+    </div>
+    <div class="math">Hoop  σθ = p r / t     = 2 × 50 / 2 = 50 MPa
+Axial σz = p r / (2t)  = 25 MPa
+von Mises ≈ √(σθ² − σθσz + σz²) = √(2500 − 1250 + 625) ≈ 43 MPa</div>
+    <ol class="steps">
+      <li>Model a quarter of the tube cross-section, 20 mm long (a curved strip).</li>
+      <li>Frictionless Support on both longitudinal cut faces (quarter symmetry) and on one end face.</li>
+      <li>Pressure +2 MPa on the inside face (pushes outward into the wall).</li>
+      <li>The end caps aren't modeled, so replace their effect: <b>Pressure −25 MPa</b> on the other end face (pulls axially, giving the 25 MPa axial stress).</li>
+      <li>Results: Normal Stress in a <b>cylindrical coordinate system</b> (create one with Z along the tube axis): Y = hoop, Z = axial. Equivalent Stress for comparison.</li>
+    </ol>
+    <p><b>Expect:</b> hoop ≈ 49–52 MPa (thick-wall theory gives a little more on the inside surface than the outside), axial ≈ 25 MPa, von Mises ≈ 43–45 MPa. If you forget step 4, axial stress comes out ~0 and von Mises is off. Classic "forgot the end cap load" mistake.</p>
+  </div>
+
+  <!-- EX 4 -->
+  <div class="example">
+    <h3>Example 4: Suspension upright with Remote Forces (Baja-style)</h3>
+    <div class="spec">
+      <div><b>Geometry</b>Upright only (no hub, spindle, wheel)</div>
+      <div><b>Supports</b>Remote Displacements at upper ball joint, lower ball joint, tie rod</div>
+      <div><b>Load</b>Remote Force at the tire contact patch</div>
+      <div><b>Goal</b>Stress in the upright, reaction at each pickup</div>
+    </div>
+    <p>This is the classic way to analyze a part that sits in a mechanism without modeling the whole car.</p>
+    <ol class="steps">
+      <li><b>Coordinates:</b> import the upright in vehicle coordinates if you can (X fore-aft, Y lateral, Z vertical), so the load components from your load case go in directly.</li>
+      <li><b>Ball joints:</b> Remote Displacement scoped to each ball-joint bore, Location at the ball center. UX = UY = UZ = 0, all rotations Free (a spherical joint). Deformable behavior.</li>
+      <li><b>Tie rod:</b> Remote Displacement on the steering arm hole at the rod-end center. Only the translation along the tie rod axis is fixed (use a local CS aligned with the tie rod). Everything else Free. That's a two-force member: it can only push or pull along its axis.</li>
+      <li><b>Load:</b> Remote Force scoped to the spindle/bearing bore faces, Location at the tire contact patch. Components from your load case, e.g. vertical bump force and lateral cornering force.</li>
+      <li>Check constraint: the two ball joints alone leave one motion free, spinning about the line through both ball centers (the steering axis). The tie rod stops it, so all 6 rigid body modes are covered. Note there's one redundant constraint: both ball joints resist force along the steering axis, so how that component splits between them depends on stiffness. In reality the control arms decide it; for the hand check below, compare the other components or assume a split.</li>
+      <li>Results: Equivalent Stress scoped to the upright (excluding the ball-joint bore faces, where the BC artifacts live), Force Reaction probes on each Remote Displacement.</li>
+    </ol>
+    <div class="callout good"><b class="t">The check that makes this credible</b>Do a free-body diagram by hand: sum of forces and moments about the lower ball joint. The three reaction probes from Ansys should match your hand-calculated pickup loads. If they do, your load application and constraints are right, and the stress plot is worth looking at. Those same reaction forces are the loads for your control arm and tie rod analyses.</div>
+    <p><b>Refinements:</b> if the bore stresses matter, model the bearing outer races or a dummy spindle with contact. If the steering arm is long and thin, check its local bending separately.</p>
+  </div>
+
+  <!-- EX 5 -->
+  <div class="example">
+    <h3>Example 5: Bolted bracket, three ways</h3>
+    <div class="spec">
+      <div><b>Geometry</b>L-bracket bolted to a plate with 2 × M8 bolts</div>
+      <div><b>Load</b>Force at the bracket's free end</div>
+      <div><b>Question</b>How much does the bolt model change the answer?</div>
+    </div>
+    <div class="table-wrap"><table>
+      <tr><th>Approach</th><th>Setup</th><th>Good for</th><th>Cost</th></tr>
+      <tr><td><b>A. Fixed holes</b></td><td>Fixed Support on bolt-hole faces only</td><td>Stress in the bracket bend, far from holes</td><td>Seconds</td></tr>
+      <tr><td><b>B. Cylindrical + Compression Only</b></td><td>Cylindrical Support on holes, Compression Only on the bracket's mounting face</td><td>Lets the base lift where it would; more honest stiffness</td><td>Nonlinear, ~minutes</td></tr>
+      <tr><td><b>C. Real bolts</b></td><td>Bolt bodies (or Beam connections), Bolt Pretension (step 1 Load ~15 kN, step 2 Lock), Frictional contact (μ 0.2) bracket-plate and under heads, plate Fixed on its bottom</td><td>Bolt loads, joint slip, gapping, hole stresses</td><td>Nonlinear, longer</td></tr>
+    </table></div>
+    <p>Run A first, always. Then compare the bend stress in A vs C: if they're within a few %, A was good enough for that region. The hole-edge stresses in A will be much higher and meaningless; in C they're physical. This comparison is the most useful 30 minutes you can spend learning BCs.</p>
+  </div>
+
+  <!-- EX 6 -->
+  <div class="example">
+    <h3>Example 6: Column buckling</h3>
+    <div class="spec">
+      <div><b>Geometry</b>Ø10 mm solid steel rod, L = 500 mm</div>
+      <div><b>BCs</b>Fixed at base, free at top (K = 2)</div>
+      <div><b>Load</b>1 N compression on top face</div>
+    </div>
+    <div class="math">I    = π d⁴ / 64 = 490.9 mm⁴
+P_cr = π² E I / (K L)² = π² × 200,000 × 490.9 / (2 × 500)² ≈ 969 N</div>
+    <ol class="steps">
+      <li>Static Structural: Fixed Support at the bottom, Force 1 N downward on the top face. Solve.</li>
+      <li>Drag Eigenvalue Buckling onto the Static's Solution cell. Open Mechanical, solve.</li>
+      <li>Load Multiplier for mode 1 ≈ <b>969</b> → critical load ≈ 969 N. (There will be two nearly equal modes, bowing in two perpendicular directions.)</li>
+      <li>Check the stress at that load: 969 / 78.5 mm² ≈ 12 MPa. Nowhere near yield. That's the point: slender columns fail by buckling, not crushing.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================ 15 -->
+<section class="module" id="mod-mistakes" data-title="Errors & mistakes cheat sheet" data-group="Practice">
+  <div class="module-head"><div class="tag">MODULE 15</div><h2>Errors &amp; mistakes cheat sheet</h2><p>Symptom on the left, what it usually means on the right.</p></div>
+
+  <h3>Solver errors and warnings</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Message (paraphrased)</th><th>Usually means</th><th>Fix</th></tr>
+    <tr><td>"An internal solution magnitude limit was exceeded" / "the model may be underconstrained"</td><td>Rigid body motion: a body or the whole model is free to move</td><td>Check supports; look for bodies with no contact; Contact Tool initial status; run a Modal to find 0 Hz modes</td></tr>
+    <tr><td>"Solver pivot warnings" / "pivot ... at node X"</td><td>Barely constrained or disconnected region at that node</td><td>Find the node (Solution Information or Named Selection by node ID), see what's loose</td></tr>
+    <tr><td>"One or more contact regions may not be in initial contact"</td><td>Nonlinear contact starting open</td><td>Contact Tool; Interface Treatment = Adjust to Touch; fix CAD gaps</td></tr>
+    <tr><td>"The solution is not converging" / "unable to converge"</td><td>Nonlinear run struggling: contact chattering, large deformation, unconstrained parts</td><td>More substeps; check Force Convergence plot; simplify contacts; add weak constraint</td></tr>
+    <tr><td>"Element ... has become highly distorted"</td><td>Huge deformation, usually from a bad BC or units mistake</td><td>Look at the deformation at true scale before failure; check load magnitude/units</td></tr>
+    <tr><td>"The mesh contains elements of poor quality"</td><td>Sliver faces or tiny features</td><td>Defeature CAD, Mesh Metric to find them, add local sizing</td></tr>
+    <tr><td>"Problem size limit exceeded" (Student)</td><td>Over the 128k node/element limit</td><td>Coarsen globally, refine locally, use symmetry</td></tr>
+  </table></div>
+
+  <h3>Silent mistakes (no error, wrong answer)</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Symptom</th><th>Likely cause</th></tr>
+    <tr><td>Deflection ~3× too small for an aluminum part</td><td>Material left as Structural Steel</td></tr>
+    <tr><td>Numbers off by 1000</td><td>Units: N·m vs N·mm, MPa vs Pa, mm vs m in a geometry import</td></tr>
+    <tr><td>Peak stress keeps climbing when you refine</td><td>Singularity (sharp corner, point load, fixed edge)</td></tr>
+    <tr><td>Max stress sits right at a support edge</td><td>BC artifact; read away from it or model the support better</td></tr>
+    <tr><td>Reaction ≠ applied load</td><td>Load partly going into weak springs, or a second load you forgot about</td></tr>
+    <tr><td>Half the load you expected in a symmetry model</td><td>Forgot to halve the load (or halved it twice)</td></tr>
+    <tr><td>Pressure vessel axial stress ~0</td><td>No end cap load</td></tr>
+    <tr><td>Bolted joint looks way too stiff</td><td>Bonded contact between plates</td></tr>
+    <tr><td>Gravity pushing the wrong way</td><td>Acceleration sign convention (use Standard Earth Gravity)</td></tr>
+    <tr><td>Thermal stress hundreds of MPa</td><td>Over-constrained expansion</td></tr>
+    <tr><td>Modal results with a 0 Hz mode</td><td>Unconstrained direction or a floating body</td></tr>
+    <tr><td>Force on 2 faces gives double the expected stress</td><td>Usually the opposite: Force is the total, split between faces, not per face. Re-read the magnitude.</td></tr>
+    <tr><td>Load "lost" after a geometry update</td><td>Hand-picked face IDs changed; use Named Selections from CAD</td></tr>
+  </table></div>
+</section>
+
+<!-- ============================================================ 16 -->
+<section class="module" id="mod-shortcuts" data-title="UI shortcuts & reference" data-group="Practice">
+  <div class="module-head"><div class="tag">MODULE 16</div><h2>UI shortcuts &amp; quick reference</h2><p>The handful of controls that make Mechanical stop fighting you.</p></div>
+  <div class="two">
+    <div class="table-wrap"><table>
+      <tr><th>Action</th><th>How</th></tr>
+      <tr><td>Rotate view</td><td>Middle-mouse drag</td></tr>
+      <tr><td>Pan</td><td><kbd>Ctrl</kbd> + middle-mouse drag</td></tr>
+      <tr><td>Zoom</td><td>Scroll wheel, or <kbd>Shift</kbd> + middle drag</td></tr>
+      <tr><td>Box zoom</td><td>Right-mouse drag</td></tr>
+      <tr><td>Zoom to fit</td><td><kbd>F7</kbd></td></tr>
+      <tr><td>Rename tree object</td><td><kbd>F2</kbd></td></tr>
+      <tr><td>Standard views</td><td>Click the triad axes (or ISO ball) in the graphics corner</td></tr>
+    </table></div>
+    <div class="table-wrap"><table>
+      <tr><th>Selection</th><th>How</th></tr>
+      <tr><td>Body / Face / Edge / Vertex filter</td><td><kbd>Ctrl+B</kbd> / <kbd>Ctrl+F</kbd> / <kbd>Ctrl+E</kbd> / <kbd>Ctrl+P</kbd></td></tr>
+      <tr><td>Add to selection</td><td><kbd>Ctrl</kbd> + click</td></tr>
+      <tr><td>Paint select</td><td>Click and drag over faces</td></tr>
+      <tr><td>Select all (of current filter)</td><td><kbd>Ctrl+A</kbd></td></tr>
+      <tr><td>Select hidden face</td><td>Select Through ladder (bottom-left)</td></tr>
+      <tr><td>Extend to tangent / adjacent</td><td>Selection ribbon → Extend</td></tr>
+      <tr><td>Hide a body</td><td>Right-click → Hide Body</td></tr>
+    </table></div>
+  </div>
+  <h3>Unit sanity table (mm–N–s–MPa system)</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Quantity</th><th>Unit</th><th>Gotcha</th></tr>
+    <tr><td>Length</td><td>mm</td><td>STEP files can import in m or in; check bounding box in Geometry details</td></tr>
+    <tr><td>Force</td><td>N</td><td>1 lbf = 4.448 N</td></tr>
+    <tr><td>Stress / Pressure</td><td>MPa (N/mm²)</td><td>1 ksi = 6.895 MPa</td></tr>
+    <tr><td>Moment</td><td>N·mm</td><td>1 N·m = 1000 N·mm; 1 ft·lbf = 1356 N·mm</td></tr>
+    <tr><td>Density</td><td>tonne/mm³ internally</td><td>Mechanical converts kg/m³ for you if you type units</td></tr>
+    <tr><td>Acceleration</td><td>mm/s²</td><td>1 g = 9806.6 mm/s²</td></tr>
+  </table></div>
+</section>
+
+<!-- ============================================================ 17 -->
+<section class="module" id="mod-quiz" data-title="Quiz" data-group="Practice">
+  <div class="module-head"><div class="tag">MODULE 17</div><h2>Check yourself</h2><p>Instant feedback. Wrong answers show the explanation.</p></div>
+  <p><span id="quizScore"></span> <button class="btn" id="quizReset" style="margin-left:10px">Reset</button></p>
+  <div id="quiz"></div>
+</section>
+
+<footer>
+  <p>Ansys®, Workbench™ and Mechanical™ are trademarks of ANSYS, Inc. This is an independent study guide, not affiliated with or endorsed by Ansys. Material values are typical references; always use real datasheets for design. Hand calcs assume linear elasticity and small deflection.</p>
+</footer>
+
+</main>
+</div>
+
+<script>
+window.QUIZ = [
+  { q: "A linear static solve finds the unknowns in [K]{u} = {F}. What are the unknowns?", a: ["Stresses at each element", "Displacements at each node", "Forces at each support", "Strains at each node"], c: 1, why: "The solver finds nodal displacements. Strain and stress are derived from them afterwards." },
+  { q: "You forgot to assign 6061 aluminum to a cantilever, so it ran as Structural Steel. What's wrong in the results?", a: ["Stress and deflection both ~3× too low", "Deflection ~3× too low, stress about the same", "Stress ~3× too high, deflection the same", "Nothing, material only matters for safety factor"], c: 1, why: "Deflection scales with 1/E (200 vs 68.9 GPa). For a statically determinate part, stress depends on geometry and load only." },
+  { q: "Which support is the standard boundary condition on a symmetry plane of a solid model?", a: ["Fixed Support", "Compression Only Support", "Frictionless Support", "Elastic Support"], c: 2, why: "Frictionless locks normal motion and frees in-plane sliding, exactly what the missing mirrored half would do." },
+  { q: "You apply a Force of 600 N to three faces at once. How much force does each face get?", a: ["600 N each (1800 N total)", "200 N each regardless of size", "600 N total, split in proportion to face area", "It depends on mesh density"], c: 2, why: "Force is a total spread as uniform traction over the combined area." },
+  { q: "Peak stress at an inside corner keeps rising every time you refine the mesh. What is it?", a: ["A real stress concentration", "A stress singularity", "A material nonlinearity", "Bad element quality"], c: 1, why: "A sharp re-entrant corner has theoretically infinite stress. Add the real fillet radius, or read stress away from it." },
+  { q: "Which load puts force only on the compressive half of a hole, like a pin would?", a: ["Force", "Pressure", "Bearing Load", "Line Pressure"], c: 2, why: "Bearing Load distributes the radial load over the loaded side using projected area." },
+  { q: "To model gravity pulling in −Y using the Acceleration load, you enter:", a: ["−9806.6 mm/s² in Y", "+9806.6 mm/s² in Y", "Either, Ansys figures it out", "Acceleration can't model gravity"], c: 1, why: "Acceleration is the acceleration of the supports, so inertia acts opposite. Standard Earth Gravity avoids the confusion: pick −Y directly." },
+  { q: "A Remote Force with Rigid behavior, compared to Deformable, will:", a: ["Let the scoped face warp freely", "Keep the scoped face undeformed, adding stiffness", "Ignore the moment from the offset", "Apply only to vertices"], c: 1, why: "Rigid ties the face to the remote point with stiff constraint equations, so the face can't change shape." },
+  { q: "Which contact type is linear?", a: ["Frictional", "Rough", "Frictionless", "Bonded"], c: 3, why: "Bonded and No Separation are linear. The others let surfaces open/close or slide, which requires iteration." },
+  { q: "A modal analysis of your static model shows a mode at 0.0 Hz. This means:", a: ["The part is very stiff", "Something can move as a rigid body (missing constraint or loose body)", "Density is missing", "The mesh is too fine"], c: 1, why: "A zero-frequency mode is a rigid body mode. Animate it to see which direction is free." },
+  { q: "Standard bolt pretension setup over two load steps is:", a: ["Step 1 Lock, step 2 Load", "Step 1 Load, step 2 Lock", "Load in both steps", "Open in step 1, Load in step 2"], c: 1, why: "Apply preload first, then lock the bolt length so external loads add to the bolt realistically." },
+  { q: "Eigenvalue Buckling with a 1 N applied load gives Load Multiplier = 2400. Critical load is:", a: ["1 N", "2400 N, and that's conservative", "2400 N, but real structures with imperfections buckle lower", "1/2400 N"], c: 2, why: "Critical load = multiplier × applied load. Linear buckling assumes perfection, so it's non-conservative; apply a knockdown." },
+  { q: "For a ductile steel bracket under static load, compare ___ to yield.", a: ["Maximum Principal Stress", "Equivalent (von-Mises) Stress", "Total Deformation", "Minimum Principal Stress"], c: 1, why: "von Mises is the yield criterion for ductile metals. Max principal is used for brittle materials." },
+  { q: "Pressure on the inside of a cylinder, entered as a positive value, does what?", a: ["Pulls the wall inward", "Pushes into the inner face, i.e. outward from the axis", "Acts along the axis", "Nothing until you pick a direction"], c: 1, why: "Positive pressure pushes into the selected face. On the inner face that expands the cylinder." },
+  { q: "Your quarter-symmetry model of a plate in tension: the original plate had 10 kN total. The quarter's end face should carry:", a: ["10 kN", "5 kN", "2.5 kN", "20 kN"], c: 1, why: "The quarter's end face is half the original width, so it carries half the total force. (Thinking about the area makes this foolproof: same stress, half the area.)" },
+  { q: "The best first check after any solve is:", a: ["Max von Mises vs yield", "Reaction forces equal applied loads, and deformed shape looks physical", "Element count", "Solve time"], c: 1, why: "If load isn't going where you think, or the part moves wrongly, every stress number is meaningless." }
+];
+</script>
+<script src="app.js"></script>
+</body>
+</html>
