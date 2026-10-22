@@ -27,11 +27,11 @@
   <h1>ANSYS Workbench + Mechanical,<br><span>from zero to trustworthy FEA.</span></h1>
   <p class="lead">This assumes you have never run a simulation. It walks through the Workbench project page, what Mechanical is actually asking you for, every support and load in the Environment tab (what it really constrains, when to use it, and how it lies to you), and how to tell if your colorful contour plot means anything. Lots of worked examples with hand calcs you can check against.</p>
   <div class="roadmap">
-    <a href="#mod-start"><b>00 → 04</b><span>What FEA does, the Workbench page, materials, geometry, the Mechanical tree</span></a>
-    <a href="#mod-connections"><b>05 → 07</b><span>Contacts and joints, meshing, analysis settings</span></a>
-    <a href="#mod-supports"><b>08 → 10</b><span>Every support, every load, remote points and scoping</span></a>
-    <a href="#mod-results"><b>11 → 13</b><span>Reading results, singularities and convergence, other analysis types</span></a>
-    <a href="#mod-examples"><b>14 → 17</b><span>Worked examples, mistake cheat sheet, shortcuts, quiz</span></a>
+    <a href="#mod-start"><b>00 → 05</b><span>What FEA does, the Workbench page, materials, geometry, the Mechanical tree, coming from SolidWorks Sim</span></a>
+    <a href="#mod-connections"><b>06 → 08</b><span>Contacts and joints, meshing, analysis settings</span></a>
+    <a href="#mod-supports"><b>09 → 11</b><span>Every support, every load, remote points and scoping</span></a>
+    <a href="#mod-results"><b>12 → 14</b><span>Reading results, singularities and convergence, other analysis types</span></a>
+    <a href="#mod-examples"><b>15 → 18</b><span>Worked examples, mistake cheat sheet, shortcuts, quiz</span></a>
   </div>
   <div class="callout"><b class="t">Version note</b>Written against the modern ribbon UI (2020 R1 and later, including 2024/2025 releases and the free Student version). Menu names shift a little between versions, but the concepts and the object names in the tree have been stable for over a decade. If a button isn't where this page says, right-click the tree object (Environment, Mesh, Solution, etc.): the context menu almost always has it under <b>Insert</b>.</div>
 </div>
@@ -57,7 +57,7 @@
   <p>Once the solver has <code>{u}</code>, strain comes from how the displacement changes across each element (a derivative), and stress comes from strain through the material law (σ = Eε in 1D). Two consequences that matter for the rest of this site:</p>
   <ul>
     <li><b>Displacements converge faster than stresses.</b> A coarse mesh gives decent deflection but can badly miss peak stress, because stress is a derivative of an approximation.</li>
-    <li><b>Stresses are computed inside elements and then averaged to the nodes</b> for those smooth contour plots. Where elements disagree a lot, the average hides error. (Module 12 covers this.)</li>
+    <li><b>Stresses are computed inside elements and then averaged to the nodes</b> for those smooth contour plots. Where elements disagree a lot, the average hides error. (Module 13 covers this.)</li>
   </ul>
 
   <h3>Why supports are mandatory</h3>
@@ -235,10 +235,10 @@
   <div class="callout analogy"><b class="t">Baja frame example</b>A whole roll cage as solids is millions of elements. As line bodies with 1.25" × 0.065" tube sections it's a few thousand beam elements and solves in seconds. You get member forces and bending stresses, but not stress at the weld cluster itself. For that, model just the node of interest in solids or shells (submodeling).</div>
 
   <h3>Multibody parts and Shared Topology</h3>
-  <p>If two bodies are touching, Mechanical by default creates a <b>bonded contact</b> between them (Module 05). An alternative is <b>Shared Topology</b>: put the bodies in one component and set <span class="path">Workbench › Share</span> in SpaceClaim (or in DesignModeler: form a multibody part). Then the mesh nodes on the shared face are literally the same nodes, so there is no contact at all. It's cleaner and faster for welded assemblies, especially shell/beam models where bonded contact between edges is fiddly.</p>
+  <p>If two bodies are touching, Mechanical by default creates a <b>bonded contact</b> between them (Module 06). An alternative is <b>Shared Topology</b>: put the bodies in one component and set <span class="path">Workbench › Share</span> in SpaceClaim (or in DesignModeler: form a multibody part). Then the mesh nodes on the shared face are literally the same nodes, so there is no contact at all. It's cleaner and faster for welded assemblies, especially shell/beam models where bonded contact between edges is fiddly.</p>
 
   <h3>Symmetry: cut the model in half (or eighth)</h3>
-  <p>If geometry, material, <b>and loads</b> are all symmetric about a plane, you can model half and apply a symmetry boundary on the cut. Half the elements, same answer. Split in SpaceClaim with <span class="path">Design › Split Body</span> using a plane, delete one half, then in Mechanical apply a <b>Frictionless Support</b> or a <b>Symmetry Region</b> on the cut face (Module 08). Loads applied to the half model must be halved too if they straddle the plane.</p>
+  <p>If geometry, material, <b>and loads</b> are all symmetric about a plane, you can model half and apply a symmetry boundary on the cut. Half the elements, same answer. Split in SpaceClaim with <span class="path">Design › Split Body</span> using a plane, delete one half, then in Mechanical apply a <b>Frictionless Support</b> or a <b>Symmetry Region</b> on the cut face (Module 09). Loads applied to the half model must be halved too if they straddle the plane.</p>
   <div class="callout warn"><b class="t">Don't use symmetry for modal or buckling</b>unless you understand it. A half model only finds modes that are symmetric about the plane; it misses all the antisymmetric ones.</div>
 
   <h3>Named Selections from CAD</h3>
@@ -303,9 +303,129 @@
   <p>Everything defaults to the <b>Global Coordinate System</b> from CAD. If your load points along a weird angle (a steering link at 23°), make a local one: right-click Coordinate Systems → <b>Insert › Coordinate System</b>, scope it to a face or set origin and axes by hand. Any load or support that has a <i>Coordinate System</i> field can then use it. Cylindrical coordinate systems (Type: Cylindrical) are used for radial/tangential results and for loads like radial displacement.</p>
 </section>
 
+
+<!-- ============================================================ SW -->
+<section class="module" id="mod-solidworks" data-title="Coming from SolidWorks Sim" data-group="Foundations">
+  <div class="module-head"><div class="tag">MODULE 05</div><h2>Coming from SolidWorks Simulation</h2><p>If you already know SW Sim, this is the translation layer: same ideas, different names, and a few things Ansys just does better.</p></div>
+
+  <p>SolidWorks Simulation is a perfectly good place to learn: fixtures, external loads, mesh, run, look at von Mises. Everything transfers. Ansys is famously less friendly, but it meshes far denser (even the Student version), has many more support and load types, and doesn't need workarounds to stay stable under big forces. So the goal of this module is to get you doing in Ansys what you already do in SW Sim, then point at what's next.</p>
+
+  <h3>Step 0: export a STEP, not an STL</h3>
+  <p>In SolidWorks, <span class="path">File › Save As › STEP AP214 (*.step)</span>. An <b>STL</b> (what you send to a 3D printer) is just a shell of triangles, and a <b>DXF</b> (what you send to a laser cutter) is a 2D outline. A <b>STEP</b> stores the real, equation-based geometry: true cylinders, true fillets, and your <b>split lines</b>. Split lines come through as separate faces, which is exactly how you make load patches (Module 11).</p>
+
+  <h3>The click path, start to finish</h3>
+  <ol class="steps">
+    <li><b>Open Workbench.</b> The app isn't called "Ansys" in your Start menu, it's <i>Workbench 2025 R2</i> (or whatever year).</li>
+    <li><b>Drag Static Structural</b> from the Toolbox list on the left into the empty Project Schematic. That's your standard linear static FEA, the equivalent of a SW "Static" study.</li>
+    <li><b>Right-click Geometry → Import Geometry → Browse</b> and pick your STEP.</li>
+    <li><b>Right-click Setup → Edit.</b> Mechanical opens. This is where supports, mesh, loads, and results live.</li>
+    <li><b>Material:</b> right-click <i>Materials</i> → <span class="path">Insert › Material Assignment</span>, select your body, <b>Apply</b>, then click the arrow next to Material Name and search for your material. (Add custom ones like S7 tool steel in Engineering Data first, Module 02.) Or just click the body under Geometry and set Assignment.</li>
+    <li><b>Mesh:</b> click <i>Mesh</i>, then <b>Sizing</b> in the ribbon. Select the body, Apply, set Element Size.</li>
+    <li><b>Supports:</b> click <i>Static Structural</i> in the tree, then pick from the <b>Supports</b> dropdown (or the Fixed / Frictionless / Displacement shortcuts beside it). Select faces with <kbd>Ctrl</kbd>+click to grab many at once, Apply.</li>
+    <li><b>Loads:</b> still on the Static Structural context tab, pick from <b>Loads</b> or <b>Inertial</b>.</li>
+    <li><b>Results:</b> click <i>Solution</i>; the ribbon shows Deformation, Strain, Stress, etc. Add Total Deformation and Equivalent (von-Mises) before solving (adding them after is fine too, it doesn't re-solve).</li>
+    <li><b>Solve</b> (lightning bolt). It can look like nothing is happening. Click the progress bar at the bottom left for status.</li>
+  </ol>
+
+  <h3>SW Sim → Ansys Mechanical translation</h3>
+  <div class="table-wrap"><table>
+    <tr><th>SolidWorks Simulation</th><th>Ansys Mechanical</th><th>Notes</th></tr>
+    <tr><td colspan="3" style="color:var(--accent);font:700 12px var(--mono)">FIXTURES → SUPPORTS</td></tr>
+    <tr><td>Fixed Geometry</td><td><a href="#sup-fixed">Fixed Support</a></td><td>Same thing, same edge-singularity issue</td></tr>
+    <tr><td>Advanced › On Cylindrical Faces (radial / circumferential / axial)</td><td><a href="#sup-cyl">Cylindrical Support</a> (Radial / Tangential / Axial)</td><td>SW "circumferential" = Ansys "Tangential". Free it to allow spin about the hole.</td></tr>
+    <tr><td>Roller/Slider</td><td><a href="#sup-frictionless">Frictionless Support</a></td><td>Normal locked, in-plane free</td></tr>
+    <tr><td>Fixed Hinge</td><td>Cylindrical Support (Tangential Free) or <a href="#sup-remote">Remote Displacement</a> with one ROT free</td><td>Revolute joint for large rotation</td></tr>
+    <tr><td>Elastic Support</td><td><a href="#sup-elastic">Elastic Support</a></td><td>Ansys is normal-direction only</td></tr>
+    <tr><td>Bearing Fixture</td><td><a href="#sup-compression">Compression Only</a> on the bore, or a modeled shaft with contact</td><td></td></tr>
+    <tr><td>Foundation Bolt</td><td><a href="#load-bolt">Bolt Pretension</a> on a bolt body or Beam connection</td><td>Much more control in Ansys</td></tr>
+    <tr><td>Use Reference Geometry</td><td><a href="#sup-disp">Displacement</a> in a local Coordinate System</td><td></td></tr>
+    <tr><td>Symmetry</td><td>Frictionless Support or Symmetry Region</td><td></td></tr>
+    <tr><td colspan="3" style="color:var(--accent);font:700 12px var(--mono)">EXTERNAL LOADS → LOADS</td></tr>
+    <tr><td>Force</td><td><a href="#load-force">Force</a> (or <a href="#load-remote">Remote Force</a> if applied off the part)</td><td>Both are totals spread over the faces</td></tr>
+    <tr><td>Torque</td><td><a href="#load-moment">Moment</a></td><td></td></tr>
+    <tr><td>Pressure</td><td><a href="#load-pressure">Pressure</a></td><td></td></tr>
+    <tr><td>Gravity</td><td><a href="#load-accel">Standard Earth Gravity</a></td><td>Avoid Acceleration's sign convention</td></tr>
+    <tr><td>Centrifugal</td><td><a href="#load-rot">Inertial › Rotational Velocity</a></td><td>Check rad/s vs RPM!</td></tr>
+    <tr><td>Bearing Load</td><td><a href="#load-bearing">Bearing Load</a></td><td></td></tr>
+    <tr><td>Temperature</td><td><a href="#load-thermal">Thermal Condition</a></td><td></td></tr>
+    <tr><td>Prescribed Displacement</td><td><a href="#sup-disp">Displacement</a> (nonzero value)</td><td>Lives under Supports in Ansys</td></tr>
+    <tr><td colspan="3" style="color:var(--accent);font:700 12px var(--mono)">MESH, STUDY, RESULTS</td></tr>
+    <tr><td>Mesh density slider / element size</td><td>Mesh › Sizing (body, face, edge)</td><td>Plus Refinement, Face Meshing, Method</td></tr>
+    <tr><td>Apply Mesh Control</td><td>Face/edge Sizing, Sphere of Influence</td><td></td></tr>
+    <tr><td>Mesh and Run</td><td>Solve</td><td>Ansys meshes automatically if needed</td></tr>
+    <tr><td>Study Properties › Large displacement</td><td>Analysis Settings › Large Deflection</td><td>Nonlinear, slow</td></tr>
+    <tr><td>Study Properties › Use inertial relief</td><td>Analysis Settings › Inertia Relief</td><td>Only for unsupported (free-floating) models</td></tr>
+    <tr><td>Use soft spring to stabilize</td><td>Analysis Settings › Weak Springs</td><td></td></tr>
+    <tr><td>Probe</td><td>Probe (result toolbar) or Solution › Probe</td><td></td></tr>
+    <tr><td>Section Clipping</td><td>Section Plane</td><td></td></tr>
+    <tr><td>Factor of Safety plot</td><td>Stress Tool › Safety Factor</td><td>Needs yield in Engineering Data</td></tr>
+    <tr><td>List Selected / graph along an edge</td><td>Path result (Construction Geometry › Path)</td><td>Plot a value along a line, export to Excel</td></tr>
+  </table></div>
+
+  <h3>Details pane habits worth copying</h3>
+  <ul>
+    <li><b>Define By: Components</b> instead of the default Vector. You type X, Y, Z directly, so there's no guessing which way the arrow points.</li>
+    <li><b>Applied By</b> (on a Force on faces): <i>Surface Effect</i> (default) distributes the load through a layer of surface elements; <i>Direct</i> puts the nodal forces straight onto the face nodes. For most work they agree closely; pick one and be consistent.</li>
+    <li><b>Units next to every value.</b> Rotational Velocity defaults to rad/s. 15,000 RPM = 1570.8 rad/s; 18,000 RPM = 1885 rad/s. Switch with <span class="path">Home › Units › Angular Velocity</span> if you'd rather think in RPM.</li>
+    <li><b>Rotational Velocity axis:</b> define by components (e.g. Z = ω) and set the X/Y/Z Coordinate to a point on the spin axis, usually the hub center or the part's center of mass. Wrong axis location = wobbling disk = huge fake stress.</li>
+  </ul>
+
+  <h3>Mesh limits you'll actually hit</h3>
+  <p>The Student version caps the problem size (Module 07), and your CPU caps patience. As a reference point, a ~200 mm combat-robot weapon disk meshed fine at a 1 mm body sizing in Student. Lab-license Ansys can go orders of magnitude finer. The rule from the SW world still holds: <b>at least 3–4 elements across the narrowest section</b> you care about, and refine locally rather than everywhere.</p>
+
+  <!-- worked example: spinner disk -->
+  <div class="example">
+    <h3>Worked example: spinning weapon disk (centrifugal + impact)</h3>
+    <div class="spec">
+      <div><b>Part</b>Flat weapon disk with a tooth, lightening pockets, hub bore + bolt holes</div>
+      <div><b>Material</b>S7 tool steel: E = 205 GPa, ν = 0.28, ρ = 7800 kg/m³, yield ≈ 1650 MPa</div>
+      <div><b>Support</b>Hub bore + bolt holes</div>
+      <div><b>Load cases</b>(a) spin at speed, (b) impact on the tooth</div>
+    </div>
+
+    <h4>(a) Centrifugal: is it going to burst?</h4>
+    <ol class="steps">
+      <li><b>Support:</b> Fixed Support on the hub bore and all the bolt-hole faces (<kbd>Ctrl</kbd>+click them all, one support). Spinning is self-balanced radially, so this mostly just stops the disk floating.</li>
+      <li><b>Load:</b> Inertial › Rotational Velocity, scoped to All Bodies, Define By Components, Z = ω about the hub center. Use <b>at least 1.5× the max RPM you plan to run</b>.</li>
+      <li><b>Mesh:</b> body sizing small enough for 3–4 elements across the thinnest spoke; local face sizing on the pocket fillets.</li>
+      <li><b>Results:</b> Equivalent Stress and Total Deformation. Read the peak, typically at the pocket corners and spoke roots.</li>
+    </ol>
+    <div class="callout warn"><b class="t">The ω² catch</b>Centrifugal stress scales with <b>ω²</b>, not ω. Running the sim at 1.5× RPM already multiplies stress by <b>2.25</b>. So "FoS 2 to 2.5 at 1.5× max RPM" is really a factor of about <b>4.5 to 5.6</b> at the speed you'll actually run. That's not wrong for a combat weapon (fatigue, impact pre-stress, material scatter), just know what you're asking for. If you want FoS 2 at operating speed, solve at operating speed and compare directly.</div>
+    <div class="math">Hand-check bounds (outer radius R = 100 mm, S7, ρ = 7.8e-9 t/mm³):
+ω at 18,000 RPM = 1885 rad/s
+Solid plain disk, peak at center:  σ = (3+ν)/8 · ρ ω² R² = 0.41 × 277 ≈ 114 MPa
+Disk with a small bore, peak at bore: σ ≈ (3+ν)/4 · ρ ω² R² ≈ 227 MPa  (a hole ~doubles it)
+Thin rim / ring:                    σ = ρ ω² R²             ≈ 277 MPa
+Pockets and teeth push real peaks above the plain-disk value (Kt at corners),
+so expect FEA somewhere around and above these. Way off? Check axis & units.</div>
+
+    <h4>(b) Impact: where will it crack?</h4>
+    <ol class="steps">
+      <li><b>Support:</b> same Fixed Support on the hub. (No inertia relief needed: that's for models with no supports at all. In SW Sim the impact case needed inertial relief + large displacement to stop it blowing up; Ansys handles the plain linear setup fine.)</li>
+      <li><b>Load:</b> Force on the tooth's striking face, Define By Components, pointing into the face (tangential to the disk rotation).</li>
+      <li><b>Magnitude:</b> a "big number" like 100,000 lbf (≈ 445 kN) is a fine way to light up the stress concentrations.</li>
+      <li>Look for <b>hot spots</b>, not numbers: tooth root, spokes, thin sections near pockets. Fix with bigger fillets and thicker walls, re-run, compare.</li>
+    </ol>
+    <div class="callout good"><b class="t">Linear = you don't need to keep increasing the force</b>In a linear static run, every stress scales exactly with the load. The hot-spot <i>pattern</i> is identical at 1 lbf and 100,000 lbf, so the magnitude only matters for absolute numbers. To find the critical load, solve once and scale:<br><code>F_critical = F_applied × (σ_yield / σ_peak)</code><br>e.g. 445 kN gives 2,900 MPa peak in S7 → F_crit ≈ 445 × 1650/2900 ≈ 253 kN. (Turning on Large Deflection breaks this scaling, which is one reason a linear run is the better tool for comparing geometries.)</div>
+    <p><b>The honest caveat:</b> a real hit is a few milliseconds of contact. Peak force depends on impact speed, the weapon's stored energy (½Iω²), and how stiff both robots are, none of which a static run knows. Static FEA is excellent for comparing designs and finding weak spots, but for "will it survive a 250 km/h tooth hit" the right tool is explicit dynamics (below).</p>
+  </div>
+
+  <h3>Next up: "Ansys Advanced" topics</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Goal</th><th>How in Ansys</th><th>Where on this site</th></tr>
+    <tr><td><b>Solve prismatic parts as 2D</b> (flat plates, disks of constant thickness) for far finer meshes for the same element budget</td><td>On the Workbench page, select the <b>Geometry</b> cell → Properties → <i>Analysis Type: 2D</i> <b>before</b> opening Mechanical. Geometry must be a surface body in the XY plane. In Mechanical, click Geometry → <b>2D Behavior: Plane Stress</b> and enter the thickness on the body. Rotational Velocity about Z and in-plane loads work as normal.</td><td>Below</td></tr>
+    <tr><td><b>Graphs of values along a line</b></td><td>Construction Geometry › Path, then scope a stress result to the path; export the chart data</td><td><a href="#mod-results">Module 12</a></td></tr>
+    <tr><td><b>Bolt preload</b></td><td>Bolt Pretension, 2 load steps (Load then Lock), frictional contact</td><td><a href="#load-bolt">Bolt card</a>, <a href="#mod-examples">Example 5</a></td></tr>
+    <tr><td><b>Weapon impact (LS-DYNA)</b></td><td>LS-DYNA (or Explicit Dynamics) system: both bodies modeled, an initial velocity / angular velocity on the weapon, contact between them, a short end time (milliseconds), and a material model with plasticity and failure (e.g. Johnson-Cook). Results are time histories: stress, plastic strain, energy.</td><td><a href="#mod-other">Module 14</a></td></tr>
+  </table></div>
+
+  <h4>Why 2D works for a weapon disk</h4>
+  <p>A flat disk loaded in its own plane (spin, a hit on the tooth face) has stress that barely varies through its thickness. <b>Plane stress</b> assumes exactly that: σz = 0, everything happens in the XY plane, and the thickness just scales stiffness and load capacity. A 2D mesh at 0.2 mm is often cheaper than a 3D mesh at 1 mm, so you can resolve fillet peaks you can't afford in 3D. It stops being valid if the part has thickness steps, out-of-plane loads (a hit that twists the disk), or features like countersinks that vary through thickness.</p>
+</section>
+
 <!-- ============================================================ 05 -->
 <section class="module" id="mod-connections" data-title="Contacts, joints, springs" data-group="Setting up the model">
-  <div class="module-head"><div class="tag">MODULE 05</div><h2>Connections: contacts, joints, springs</h2><p>How separate bodies talk to each other. Get this wrong and load either can't get through or gets through in the wrong way.</p></div>
+  <div class="module-head"><div class="tag">MODULE 06</div><h2>Connections: contacts, joints, springs</h2><p>How separate bodies talk to each other. Get this wrong and load either can't get through or gets through in the wrong way.</p></div>
 
   <p>Separate bodies don't know about each other unless something connects them. When you open Mechanical, it auto-detects faces that are touching (within a tolerance) and creates <b>Contact Regions</b> under <span class="path">Connections › Contacts</span>. All of them default to <b>Bonded</b>. That default is often fine and sometimes badly wrong.</p>
 
@@ -373,7 +493,7 @@
 
 <!-- ============================================================ 06 -->
 <section class="module" id="mod-mesh" data-title="Meshing" data-group="Setting up the model">
-  <div class="module-head"><div class="tag">MODULE 06</div><h2>Meshing</h2><p>The mesh is your resolution. Fine where the answer is, coarse everywhere else, and prove it's fine enough.</p></div>
+  <div class="module-head"><div class="tag">MODULE 07</div><h2>Meshing</h2><p>The mesh is your resolution. Fine where the answer is, coarse everywhere else, and prove it's fine enough.</p></div>
 
   <p>Click <b>Mesh</b> → <b>Generate</b> (or right-click → Generate Mesh). With zero setup, Mechanical will mesh almost anything. The question is whether that mesh is good enough to answer your question. Default meshes are usually fine for deflection and too coarse for peak stress at fillets and holes.</p>
 
@@ -437,7 +557,7 @@
   <h3>Rules of thumb</h3>
   <ul>
     <li><b>Through thickness</b>: at least 2 quadratic elements (3+ is safer) through any wall that bends, if you care about bending stress there.</li>
-    <li><b>Around a fillet or hole where you read peak stress</b>: aim for several elements around the arc (roughly 8–12 per 90° for good peaks). Then prove it with a convergence study (Module 12).</li>
+    <li><b>Around a fillet or hole where you read peak stress</b>: aim for several elements around the arc (roughly 8–12 per 90° for good peaks). Then prove it with a convergence study (Module 13).</li>
     <li>Use <b>Named Selections</b> on the critical faces so you can refine them repeatedly.</li>
     <li>Coarse mesh far away is fine. Stiffness there barely affects your hot spot.</li>
   </ul>
@@ -457,7 +577,7 @@
 
 <!-- ============================================================ 07 -->
 <section class="module" id="mod-settings" data-title="Analysis Settings" data-group="Setting up the model">
-  <div class="module-head"><div class="tag">MODULE 07</div><h2>Analysis Settings</h2><p>The first object under the environment. Mostly leave alone, but know these six things.</p></div>
+  <div class="module-head"><div class="tag">MODULE 08</div><h2>Analysis Settings</h2><p>The first object under the environment. Mostly leave alone, but know these six things.</p></div>
 
   <div class="table-wrap"><table>
     <tr><th>Setting</th><th>Default</th><th>Change it when</th></tr>
@@ -483,7 +603,7 @@
 
 <!-- ============================================================ 08 -->
 <section class="module" id="mod-supports" data-title="Supports, all of them" data-group="Boundary conditions">
-  <div class="module-head"><div class="tag">MODULE 08</div><h2>Supports, every one of them</h2><p>Supports are where your model meets the rest of the world. They're the single biggest source of wrong answers.</p></div>
+  <div class="module-head"><div class="tag">MODULE 09</div><h2>Supports, every one of them</h2><p>Supports are where your model meets the rest of the world. They're the single biggest source of wrong answers.</p></div>
 
   <p>Supports live in the <b>Environment</b> context tab (click the <i>Static Structural</i> branch and the ribbon changes) under the <b>Supports</b> dropdown. Or right-click the Static Structural branch → <span class="path">Insert</span>. Every support <b>removes</b> degrees of freedom: it sets displacements to known values (usually zero) and the solver calculates whatever <b>reaction force</b> is needed to hold them there.</p>
 
@@ -561,7 +681,7 @@
     </div>
     <details><summary>When to use, gotchas, real examples</summary><div class="more">
       <p><b>Use when</b> the support is something you didn't model: a hub, a bearing, a frame, the center of a pin. Put the remote point's <b>Location</b> where the real connection's center is, and free the rotations that the real connection allows.</p>
-      <p><b>Behavior</b> matters a lot (see Module 10):</p>
+      <p><b>Behavior</b> matters a lot (see Module 11):</p>
       <ul>
         <li><b>Rigid</b>: the face is welded to an infinitely stiff spider. Face can't deform at all. Stiffens the part.</li>
         <li><b>Deformable</b>: the face can warp; the remote point gets the average motion. Usually more realistic. Check which one your version defaulted to; it's the first thing to look at in Details.</li>
@@ -694,7 +814,7 @@
 
 <!-- ============================================================ 09 -->
 <section class="module" id="mod-loads" data-title="Loads, all of them" data-group="Boundary conditions">
-  <div class="module-head"><div class="tag">MODULE 09</div><h2>Loads, every one of them</h2><p>Loads build {F}. Same mental model as supports: every load is a claim about how force gets into the part.</p></div>
+  <div class="module-head"><div class="tag">MODULE 10</div><h2>Loads, every one of them</h2><p>Loads build {F}. Same mental model as supports: every load is a claim about how force gets into the part.</p></div>
 
   <p>Loads live in the <b>Environment</b> tab under <b>Loads</b> (structural loads), <b>Inertial</b> (gravity, acceleration, rotation), and <b>Conditions</b> (temperatures, joint loads). Most structural loads let you define direction in two ways:</p>
   <ul>
@@ -772,7 +892,7 @@
     <details><summary>When to use, gotchas, real examples</summary><div class="more">
       <p><b>Use when</b> load is applied by something you didn't model, at a known point: the tire contact patch loading an upright through the spindle, a shock force at the shock eye center, a rider pushing on a pedal. This is the single most useful load for suspension and chassis parts.</p>
       <p><b>Example:</b> Baja upright. Model just the upright. Remote Force scoped to the spindle bore faces, Location at the tire contact patch (track and scrub radius offsets), components from your load case (e.g. 3g bump vertical + 1g cornering lateral). The upright sees the correct moments without modeling the hub, spindle, or wheel.</p>
-      <p><b>Behavior:</b> <i>Deformable</i> (default) lets the face warp naturally. <i>Rigid</i> keeps the face's shape, which over-stiffens it and can raise stresses around the face edge. Module 10 has the details.</p>
+      <p><b>Behavior:</b> <i>Deformable</i> (default) lets the face warp naturally. <i>Rigid</i> keeps the face's shape, which over-stiffens it and can raise stresses around the face edge. Module 11 has the details.</p>
       <p><b>Check:</b> after solving, a reaction probe on your supports should show the correct moment too, not just the force.</p>
     </div></details>
   </div>
@@ -912,7 +1032,7 @@
       </div>
     </div>
     <details><summary>When to use, gotchas, real examples</summary><div class="more">
-      <p><b>Use for</b> quick checks: aluminum part bolted to steel heated 80 °C. For non-uniform temperatures (a brake rotor, an exhaust bracket) solve a <b>Steady-State Thermal</b> first and link it (Module 13).</p>
+      <p><b>Use for</b> quick checks: aluminum part bolted to steel heated 80 °C. For non-uniform temperatures (a brake rotor, an exhaust bracket) solve a <b>Steady-State Thermal</b> first and link it (Module 14).</p>
       <p><b>Hand check:</b> fully restrained bar: σ = E α ΔT. Steel, ΔT = 100 °C: 200,000 × 12e-6 × 100 = 240 MPa. Over-constraining a thermal model produces exactly this kind of huge fake stress.</p>
     </div></details>
   </div>
@@ -934,12 +1054,12 @@
   </div>
 
   <h3>Loads that are actually imported</h3>
-  <p>When systems are linked (Module 01/13), you get an <b>Imported Load</b> folder: imported body temperature from a thermal run, imported pressure from Fluent. You right-click → <i>Import Load</i> to refresh. Same idea as a Thermal Condition, but varying per node.</p>
+  <p>When systems are linked (Module 01/14), you get an <b>Imported Load</b> folder: imported body temperature from a thermal run, imported pressure from Fluent. You right-click → <i>Import Load</i> to refresh. Same idea as a Thermal Condition, but varying per node.</p>
 </section>
 
 <!-- ============================================================ 10 -->
 <section class="module" id="mod-remote" data-title="Remote points & load transfer" data-group="Boundary conditions">
-  <div class="module-head"><div class="tag">MODULE 10</div><h2>Remote points, Rigid vs Deformable, and Saint-Venant</h2><p>How a load gets from "a point" onto "a face" decides your local stresses. Here's how to control it.</p></div>
+  <div class="module-head"><div class="tag">MODULE 11</div><h2>Remote points, Rigid vs Deformable, and Saint-Venant</h2><p>How a load gets from "a point" onto "a face" decides your local stresses. Here's how to control it.</p></div>
 
   <p>Remote Force, Remote Displacement, Moment, Point Mass, Springs and Joints all use a <b>remote point</b>: a single node off in space (or at a location you choose) tied to the selected face by constraint equations. You can create one explicitly (right-click <i>Model</i> → Insert → <b>Remote Point</b>) and reuse it: scope a Remote Force and a joint to the same point, for instance.</p>
 
@@ -1004,7 +1124,7 @@
 
 <!-- ============================================================ 11 -->
 <section class="module" id="mod-results" data-title="Results & post-processing" data-group="Results">
-  <div class="module-head"><div class="tag">MODULE 11</div><h2>Results &amp; post-processing</h2><p>Insert the right result, read it the right way, and look at the deformed shape before anything else.</p></div>
+  <div class="module-head"><div class="tag">MODULE 12</div><h2>Results &amp; post-processing</h2><p>Insert the right result, read it the right way, and look at the deformed shape before anything else.</p></div>
 
   <p>Results go under <b>Solution</b>. Insert from the Solution context tab, or right-click Solution → Insert. After adding results, right-click → <b>Evaluate All Results</b> (no re-solve needed).</p>
 
@@ -1035,7 +1155,7 @@
   <p>Other probes: <b>Moment Reaction</b> (moment about a point at the support), <b>Joint Probe</b> (forces through a joint), <b>Bolt Pretension probe</b>, <b>Beam probe</b> (axial force/moment in a beam connection), <b>Spring probe</b>. You can also just click the <b>Probe</b> button in the result toolbar and click on the model to read the value at a point.</p>
 
   <h3>Scoping results</h3>
-  <p>A result scoped to the whole model shows the global max, which is often at a singularity you don't care about (Module 12). Scope stress results to the body or faces you're checking: in Details, set Geometry to just those faces. Or right-click a result → <b>Create Results on Selected</b>.</p>
+  <p>A result scoped to the whole model shows the global max, which is often at a singularity you don't care about (Module 13). Scope stress results to the body or faces you're checking: in Details, set Geometry to just those faces. Or right-click a result → <b>Create Results on Selected</b>.</p>
 
   <h3>Display options worth knowing</h3>
   <ul>
@@ -1044,7 +1164,7 @@
     <li><b>Contours</b>: Smooth vs Banded vs Isolines. Change the number of bands, or click a value on the legend to set a custom range (great for "show me everything above 200 MPa").</li>
     <li><b>Show Elements</b>: overlay the mesh on the result to see if the peak is sitting on one sad element.</li>
     <li><b>Path results</b>: Model → Construction Geometry → Path (two points). Then a stress result scoped to the path plots stress vs distance. <b>Linearized Stress</b> along a through-thickness path splits membrane vs bending (pressure vessel codes use this).</li>
-    <li><b>Averaged vs Unaveraged</b> (result Details → Display Option): explained in Module 12.</li>
+    <li><b>Averaged vs Unaveraged</b> (result Details → Display Option): explained in Module 13.</li>
     <li><b>Animation</b>: play button in the Graph window. Animated mode shapes are the best way to understand modal results.</li>
   </ul>
 
@@ -1061,7 +1181,7 @@
 
 <!-- ============================================================ 12 -->
 <section class="module" id="mod-trust" data-title="Can I trust it?" data-group="Results">
-  <div class="module-head"><div class="tag">MODULE 12</div><h2>Can I trust it? Singularities, convergence, verification</h2><p>This module is the difference between "I ran FEA" and "I know the part is safe."</p></div>
+  <div class="module-head"><div class="tag">MODULE 13</div><h2>Can I trust it? Singularities, convergence, verification</h2><p>This module is the difference between "I ran FEA" and "I know the part is safe."</p></div>
 
   <h3>Stress singularities: the infinite-stress trap</h3>
   <p>Some spots have theoretically <b>infinite</b> stress in linear elasticity. The FEA value there isn't a real number; it's whatever your mesh size happens to make it. Refine the mesh and it keeps climbing forever. Common causes:</p>
@@ -1132,7 +1252,7 @@
 
 <!-- ============================================================ 13 -->
 <section class="module" id="mod-other" data-title="Modal, buckling, thermal" data-group="Results">
-  <div class="module-head"><div class="tag">MODULE 13</div><h2>Other analysis types: modal, buckling, thermal</h2><p>Same Mechanical, different question. The supports chapter applies to all of them.</p></div>
+  <div class="module-head"><div class="tag">MODULE 14</div><h2>Other analysis types: modal, buckling, thermal</h2><p>Same Mechanical, different question. The supports chapter applies to all of them.</p></div>
 
   <h3>Modal (natural frequencies)</h3>
   <p>Drag <b>Modal</b> onto the schematic (or onto the Model cell of your static system to share geometry and mesh). No loads, just supports. Set <b>Max Modes to Find</b> in Analysis Settings (default 6). Solve, then the Tabular Data shows each mode's frequency; right-click → <i>Create Mode Shape Results</i>.</p>
@@ -1183,7 +1303,7 @@
 
 <!-- ============================================================ 14 -->
 <section class="module" id="mod-examples" data-title="Worked examples" data-group="Practice">
-  <div class="module-head"><div class="tag">MODULE 14</div><h2>Worked examples</h2><p>Each one has a hand calc so you know what the right answer is before you click Solve. Build them yourself; they take 10–20 minutes each.</p></div>
+  <div class="module-head"><div class="tag">MODULE 15</div><h2>Worked examples</h2><p>Each one has a hand calc so you know what the right answer is before you click Solve. Build them yourself; they take 10–20 minutes each.</p></div>
 
   <!-- EX 1 -->
   <div class="example">
@@ -1216,7 +1336,7 @@ M  = F L = 500 × 300 = 150,000 N·mm   (at the wall)
       <li>Directional deformation at the tip ≈ <b>−2.0 mm</b>. Within ~1% of hand calc (shear deflection adds a hair).</li>
       <li>Force reaction Y = <b>+500 N</b>. Load path confirmed.</li>
       <li>Normal stress X at the top surface 25 mm from the wall ≈ <b>+52.8 MPa</b> (tension on top), and −52.8 on bottom.</li>
-      <li>The <b>max</b> Equivalent Stress will likely show up at the corners of the fixed face, higher than 57.6, and it grows if you refine the mesh there. That's the Fixed Support singularity from Module 12. The physics answer is the beam-theory value away from the wall.</li>
+      <li>The <b>max</b> Equivalent Stress will likely show up at the corners of the fixed face, higher than 57.6, and it grows if you refine the mesh there. That's the Fixed Support singularity from Module 13. The physics answer is the beam-theory value away from the wall.</li>
     </ul>
     <div class="reveal">
       <p><b>Try it:</b> Change the material to Structural Steel without changing anything else. What happens to deflection and stress?</p>
@@ -1336,7 +1456,7 @@ P_cr = π² E I / (K L)² = π² × 200,000 × 490.9 / (2 × 500)² ≈ 969 N</d
 
 <!-- ============================================================ 15 -->
 <section class="module" id="mod-mistakes" data-title="Errors & mistakes cheat sheet" data-group="Practice">
-  <div class="module-head"><div class="tag">MODULE 15</div><h2>Errors &amp; mistakes cheat sheet</h2><p>Symptom on the left, what it usually means on the right.</p></div>
+  <div class="module-head"><div class="tag">MODULE 16</div><h2>Errors &amp; mistakes cheat sheet</h2><p>Symptom on the left, what it usually means on the right.</p></div>
 
   <h3>Solver errors and warnings</h3>
   <div class="table-wrap"><table>
@@ -1371,7 +1491,7 @@ P_cr = π² E I / (K L)² = π² × 200,000 × 490.9 / (2 × 500)² ≈ 969 N</d
 
 <!-- ============================================================ 16 -->
 <section class="module" id="mod-shortcuts" data-title="UI shortcuts & reference" data-group="Practice">
-  <div class="module-head"><div class="tag">MODULE 16</div><h2>UI shortcuts &amp; quick reference</h2><p>The handful of controls that make Mechanical stop fighting you.</p></div>
+  <div class="module-head"><div class="tag">MODULE 17</div><h2>UI shortcuts &amp; quick reference</h2><p>The handful of controls that make Mechanical stop fighting you.</p></div>
   <div class="two">
     <div class="table-wrap"><table>
       <tr><th>Action</th><th>How</th></tr>
@@ -1408,7 +1528,7 @@ P_cr = π² E I / (K L)² = π² × 200,000 × 490.9 / (2 × 500)² ≈ 969 N</d
 
 <!-- ============================================================ 17 -->
 <section class="module" id="mod-quiz" data-title="Quiz" data-group="Practice">
-  <div class="module-head"><div class="tag">MODULE 17</div><h2>Check yourself</h2><p>Instant feedback. Wrong answers show the explanation.</p></div>
+  <div class="module-head"><div class="tag">MODULE 18</div><h2>Check yourself</h2><p>Instant feedback. Wrong answers show the explanation.</p></div>
   <p><span id="quizScore"></span> <button class="btn" id="quizReset" style="margin-left:10px">Reset</button></p>
   <div id="quiz"></div>
 </section>
@@ -1437,6 +1557,10 @@ window.QUIZ = [
   { q: "For a ductile steel bracket under static load, compare ___ to yield.", a: ["Maximum Principal Stress", "Equivalent (von-Mises) Stress", "Total Deformation", "Minimum Principal Stress"], c: 1, why: "von Mises is the yield criterion for ductile metals. Max principal is used for brittle materials." },
   { q: "Pressure on the inside of a cylinder, entered as a positive value, does what?", a: ["Pulls the wall inward", "Pushes into the inner face, i.e. outward from the axis", "Acts along the axis", "Nothing until you pick a direction"], c: 1, why: "Positive pressure pushes into the selected face. On the inner face that expands the cylinder." },
   { q: "Your quarter-symmetry model of a plate in tension: the original plate had 10 kN total. The quarter's end face should carry:", a: ["10 kN", "5 kN", "2.5 kN", "20 kN"], c: 1, why: "The quarter's end face is half the original width, so it carries half the total force. (Thinking about the area makes this foolproof: same stress, half the area.)" },
+  { q: "You run a centrifugal check at 1.5× your max RPM. Compared with running at max RPM, the stresses are:", a: ["1.5× higher", "2.25× higher", "3× higher", "The same"], c: 1, why: "Centrifugal load goes with ω², so 1.5² = 2.25. A FoS of 2 at 1.5× RPM is about 4.5 at operating speed." },
+  { q: "Linear static run: 445 kN on a tooth gives a 2,900 MPa peak in S7 (yield 1650). Critical load is about:", a: ["445 kN", "253 kN", "782 kN", "You must re-run at smaller loads to find it"], c: 1, why: "Linear means stress scales with load: 445 × 1650/2900 ≈ 253 kN. No re-runs needed (unless Large Deflection is on)." },
+  { q: "SolidWorks Sim's Roller/Slider fixture is closest to which Ansys support?", a: ["Fixed Support", "Frictionless Support", "Compression Only Support", "Elastic Support"], c: 1, why: "Both lock motion normal to the face and let it slide in-plane." },
+  { q: "To solve a flat, constant-thickness disk as 2D plane stress, where do you set Analysis Type: 2D?", a: ["Mesh details in Mechanical", "Analysis Settings", "Geometry cell properties in Workbench, before opening Mechanical", "Engineering Data"], c: 2, why: "2D is chosen on the Workbench Geometry cell before the model is attached. Then set 2D Behavior: Plane Stress in Mechanical." },
   { q: "The best first check after any solve is:", a: ["Max von Mises vs yield", "Reaction forces equal applied loads, and deformed shape looks physical", "Element count", "Solve time"], c: 1, why: "If load isn't going where you think, or the part moves wrongly, every stress number is meaningless." }
 ];
 </script>
