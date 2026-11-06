@@ -193,6 +193,14 @@
 
   <h3>Making your own (e.g. 6061-T6, 4130)</h3>
   <p>The library "Aluminum Alloy" is generic (E = 71 GPa). For real work, make your own: in the Outline pane, click the empty "Click here to add a new material" row, name it, then drag <b>Isotropic Elasticity</b> and <b>Density</b> from the Toolbox on the left onto it and type values. Use a datasheet (MatWeb, MMPDS).</p>
+  <p><b>Where the properties live:</b> click the material's row in the Outline pane first. The Toolbox on the far left then fills with categories (if it only shows <i>Field Variables</i>, the material row isn't selected). Expand a category and drag a property onto the material row or into the Properties pane below it:</p>
+  <ul>
+    <li><b>Physical Properties</b> › Density</li>
+    <li><b>Linear Elastic</b> › Isotropic Elasticity (E and ν; Ansys fills in bulk and shear modulus)</li>
+    <li><b>Strength</b> › Tensile Yield Strength, Tensile Ultimate Strength (compressive ones too, if you want them)</li>
+    <li><b>Thermal</b> › Isotropic Thermal Conductivity, and Isotropic Secant Coefficient of Thermal Expansion (lives under Physical Properties in some versions)</li>
+  </ul>
+  <p>Check the unit dropdown beside each value. Strengths default to Pa, so either pick MPa from the dropdown and type 503, or type 5.03E+08 in Pa.</p>
   <div class="table-wrap"><table>
     <tr><th>Material</th><th>E (GPa)</th><th>ν</th><th>ρ (kg/m³)</th><th>Yield (MPa)</th><th>UTS (MPa)</th></tr>
     <tr><td>Structural Steel (Ansys default)</td><td>200</td><td>0.30</td><td>7850</td><td>250</td><td>460</td></tr>
